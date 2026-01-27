@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asistente Virtual para Niños</title>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #FFCE00;
+      --secondary: #FF6F61;
+      --accent: #4A90E2;
+      --bg: linear-gradient(to bottom, #E8F6FF, #B3E5FC);
+      --text-dark: #333333;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Baloo 2', cursive;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 100vh;
+      padding: 20px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    header { text-align: center; margin-bottom: 10px; z-index: 2; }
+    header h1 {
+      font-size: 3rem;
+      color: var(--secondary);
+      text-shadow: 2px 2px rgba(0,0,0,0.1);
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      position: relative;
+      z-index: 2;
+    }
+
+    #respuesta {
+      font-size: 1.8rem;
+      color: var(--text-dark);
+      background-color: #fff;
+      padding: 15px 20px;
+      border-radius: 20px;
+      max-width: 90%;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      min-height: 60px;
+      z-index: 2;
+    }
+
+    #imagenes-respuesta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 20px;
+      z-index: 2;
+    }
+
+    #imagenes-respuesta img {
+      width: 160px;
+      height: 160px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      background: white;
+      padding: 5px;
+    }
+
+    .boton-microfono {
+      background: var(--primary);
+      border: 8px solid var(--secondary);
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      z-index: 2;
+    }
+
+    .boton-microfono img { width: 60px; height: 60px; }
+
+    #btn-grabar-intento {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 12px;
+      background: var(--secondary);
+      color: white;
+      font-family: 'Baloo 2', cursive;
+      cursor: pointer;
+      display: none;
+    }
+
+    #mensaje-validacion {
+      margin-top: 15px;
+      font-size: 1.3rem;
+      text-align: center;
+      color: var(--text-dark);
+      font-weight: bold;
+    }
+
+    footer { margin-top: 10px; font-size: 1rem; color: var(--text-dark); z-index: 2; }
+
+    /* Nubes */
+    .nube-fondo {
+      position: absolute;
+      width: 150px;
+      opacity: 0.3;
+      animation: moverNube 25s linear infinite;
+      z-index: 0;
+    }
+    .nube1 { top: 10%; left: -20%; }
+    .nube2 { top: 50%; left: -25%; animation-duration: 30s; }
+
+    @keyframes moverNube {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(150vw); }
+    }
+    /* Personajes laterales */
+    .personaje-lateral {
+      position: absolute;
+      width: 120px;
+      animation: saltar 2s infinite alternate ease-in-out;
+      z-index: 1;
+    }
+    .izq1 { bottom: 10%; left: 2%; }
+    .izq2 { top: 10%; left: 2%; }
+    .der1 { bottom: 10%; right: 2%; }
+    .der2 { top: 10%; right: 2%; }
+
+    @keyframes saltar {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-15px); }
+    }
+    /* Globos flotando */
+    .globo {
+      position: absolute;
+      width: 60px;
+      animation: flotar 6s ease-in-out infinite;
+      z-index: 0;
+    }
+    .globo1 { left: 10%; bottom: -80px; animation-delay: 0s; }
+    .globo2 { left: 50%; bottom: -100px; animation-delay: 2s; }
+    .globo3 { right: 10%; bottom: -120px; animation-delay: 4s; }
+
+    @keyframes flotar {
+      0% { transform: translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateY(-120vh) scale(1.2); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Nubes -->
+  <img src="https://cdn-icons-png.flaticon.com/512/414/414927.png" class="nube-fondo nube1" alt="Nube">
+  <img src="https://cdn-icons-png.flaticon.com/512/414/414927.png" class="nube-fondo nube2" alt="Nube">
+
+  <!-- Personajes laterales -->
+  <img src="https://cdn-icons-png.flaticon.com/512/5333/5333073.png" class="personaje-lateral izq1" alt="Niño">
+  <img src="https://png.pngtree.com/png-clipart/20230914/original/pngtree-preschool-free-vector-png-image_11243424.png" class="personaje-lateral izq2" alt="Niña">
+  <img src="https://img.freepik.com/iconos-gratis/trineo_318-680270.jpg" class="personaje-lateral der1" alt="Niño">
+  <img src="https://th.bing.com/th/id/R.bb84601a4859b26e40fd19955575e56a?rik=vcwcAMGdquojog&pid=ImgRaw&r=0" class="personaje-lateral der2" alt="Niña">
+
+  <!-- Globos flotando -->
+  <img src="https://cdn-icons-png.flaticon.com/512/2132/2132255.png" class="globo globo1" alt="Globo">
+  <img src="https://th.bing.com/th/id/R.a57c80755be708ebdaa251f4c98a4bff?rik=id9MqXI%2fyRM%2f5A&pid=ImgRaw&r=0" class="globo globo2" alt="Globo">
+  <img src="https://cdn-icons-png.flaticon.com/512/2784/2784389.png" class="globo globo3" alt="Globo">
+
+ 
+<header>
+    <h1>👋 ¡Hola, amiguito!</h1>
+    <p style="font-size:1.2rem;color:var(--text-dark)">Pregunta lo que quieras con tu voz</p>
+</header>
+<main>
+    <div id="respuesta">🎙️ ¡Presiona el micrófono para hablar!</div>
+    <div id="imagenes-respuesta"></div>
+    <button class="boton-microfono" id="microfono" aria-label="Micrófono">
+        <img src="https://cdn-icons-png.flaticon.com/512/2377/2377812.png" alt="Micrófono"/>
+    </button>
+    <button id="btn-grabar-intento">🎤 Graba para repetir</button>
+    <div id="mensaje-validacion"></div>
+    <div id="contenedor-ejercicios" style="display:none;">
+        <button id="btn-frases">🗣️ Practicar Palabras (A, E, I, O, U)</button>
+        <button id="btn-oraciones">🔠 Practicar Oraciones</button>
+    </div>
+    <audio id="audio-respuesta"></audio>
+    <audio id="audio-repeticion"></audio>
+</main>
+<footer>
+    <p>¡Habla y descubre!</p>
+</footer>
+<script>
+const botonMicrofono = document.getElementById("microfono");
+const respuestaElemento = document.getElementById("respuesta");
+const imagenesContenedor = document.getElementById("imagenes-respuesta");
+const btnGrabarIntento = document.getElementById("btn-grabar-intento");
+const mensajeValidacion = document.getElementById("mensaje-validacion");
+const contenedorEjercicios = document.getElementById("contenedor-ejercicios");
+const btnFrases = document.getElementById("btn-frases");
+const btnOraciones = document.getElementById("btn-oraciones");
+
+let palabrasPendientes = [];
+let palabrasCompletadas = 0;
+let mediaRecorder;
+let audioChunks = [];
+
+navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.addEventListener("dataavailable", e => audioChunks.push(e.data));
+    mediaRecorder.addEventListener("stop", () => {
+        const blob = new Blob(audioChunks, { type: "audio/webm" });
+        audioChunks = [];
+        enviarAudio(blob);
+    });
+
+    botonMicrofono.addEventListener("mousedown", () => {
+        audioChunks = [];
+        mediaRecorder.start();
+        respuestaElemento.innerText = "🎙️ Grabando... ¡Suelta para terminar!";
+        imagenesContenedor.innerHTML = "";
+        contenedorEjercicios.style.display = "none";
+    });
+
+    botonMicrofono.addEventListener("mouseup", () => {
+        mediaRecorder.stop();
+        respuestaElemento.innerText = "⏳ Procesando tu pregunta...";
+    });
+});
+
+function enviarAudio(audioBlob) {
+    const formData = new FormData();
+    formData.append("file", audioBlob, "pregunta.webm");
+
+    fetch("/voz", { method: "POST", body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                respuestaElemento.innerText = "❌ " + data.error;
+                return;
+            }
+            enviarPregunta(data.texto);
+        });
+}
+
+// --- LÓGICA DE EJERCICIOS DE PALABRAS ---
+async function iniciarSecuenciaPalabras(palabras) {
+    palabrasPendientes = [...palabras];
+    palabrasCompletadas = 0;
+    contenedorEjercicios.style.display = "none";
+    mensajeValidacion.innerText = "";
+    await reproducirSiguientePalabra();
+}
+
+async function reproducirSiguientePalabra() {
+    if (palabrasPendientes.length === 0) {
+        respuestaElemento.innerText = "🥳 ¡Completaste las 5 palabras! ¡Excelente trabajo!";
+        contenedorEjercicios.style.display = "block";
+        return;
+    }
+
+    const palabraActual = palabrasPendientes[0];
+    const totalPalabras = palabrasCompletadas + palabrasPendientes.length;
+
+    respuestaElemento.innerText = `👩‍🏫 Palabra ${palabrasCompletadas + 1}/${totalPalabras}: Escucha y repite: "${palabraActual}"`;
+
+    let res = await fetch("/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto: `La palabra es: ${palabraActual}` })
+    });
+    let data = await res.json();
+
+    if (data.audio_url) {
+        let audio = new Audio(data.audio_url + "?t=" + new Date().getTime());
+        await new Promise(resolve => {
+            audio.onended = () => {
+                respuestaElemento.innerText = `🎤 ¡Tu turno! Repite: "${palabraActual}"`;
+                btnGrabarIntento.style.display = "block";
+                btnGrabarIntento.dataset.respuesta = palabraActual;
+                delete btnGrabarIntento.dataset.oracion;
+                resolve();
+            };
+            audio.play().catch(() => resolve());
+        });
+    } else {
+        palabrasPendientes.shift();
+        reproducirSiguientePalabra();
+    }
+}
+
+// --- EJERCICIOS DE ORACIONES ---
+// --- FUNCIÓN PARA INICIAR EJERCICIO DE ORACIONES (Con orden de audio corregido) ---
+
+    function iniciarEjercicioVocal(vocal) {
+      // Ocultar el botón de ejercicios cuando empezamos un ejercicio
+      contenedorEjercicios.style.display = "none"; 
+      btnGrabarIntento.style.display = "none";
+      mensajeValidacion.innerText = "";
+
+       fetch("/oracion_vocal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vocal })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) { mensajeValidacion.innerText = data.error; return; }
+
+        const oracion = data.oracion;
+        const palabraClave = data.palabra_clave;
+ 
+        respuestaElemento.innerText = `🧠 La palabra es: ${palabraClave}. Escucha la oración y repítela: "${oracion}"`;
+
+      // ✅ 1. CONCATENAMOS EL TEXTO PARA GENERAR UN SOLO AUDIO EN EL ORDEN CORRECTO
+        const textoAIntroducir = 
+            `La palabra clave es ${palabraClave}. Escucha la oración para la letra ${vocal}: ${oracion}. Ahora repitelo tu.`;
+
+        // 2. Reproducir la secuencia de audio con TTS
+        fetch("/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ texto: textoAIntroducir }) // Usamos el texto concatenado
+        })
+        .then(res => res.json())
+        .then(dataTTS => {
+          const audio = new Audio(dataTTS.audio_url + "?t=" + new Date().getTime());
+          audio.play();
+
+          audio.onended = () => {
+            btnGrabarIntento.style.display = "block";
+            // Guardamos la oración completa como respuesta esperada
+            btnGrabarIntento.dataset.oracion = oracion; 
+            btnGrabarIntento.dataset.palabraClave = palabraClave;
+            btnGrabarIntento.dataset.vocal = vocal;
+            delete btnGrabarIntento.dataset.respuesta; // Limpiar la respuesta anterior de "palabras"
+          };
+        });
+      });
+    }
+
+// --- PREGUNTAS NORMALES ---
+function enviarPregunta(pregunta) {
+    fetch("/preguntar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pregunta })
+    })
+    .then(res => res.json())
+    .then(data => {
+        respuestaElemento.innerText = "🧠 " + data.respuesta;
+        mostrarImagenes(data.imagenes || []);
+        const audioRespuesta = document.getElementById("audio-respuesta");
+        const audioRepeticion = document.getElementById("audio-repeticion");
+        btnGrabarIntento.style.display = "none";
+        delete btnGrabarIntento.dataset.oracion;
+
+        if (data.audio_url) {
+            audioRespuesta.src = data.audio_url + "?t=" + new Date().getTime();
+            audioRespuesta.play().catch(err => console.log("Error al reproducir audio:", err));
+        }
+
+        audioRespuesta.onended = () => {
+            if (data.repetir_url) {
+                audioRepeticion.src = data.repetir_url + "?t=" + new Date().getTime();
+                audioRepeticion.play().catch(err => console.log("Error audio repetición:", err));
+            }
+        };
+
+        audioRepeticion.onended = () => {
+            btnGrabarIntento.style.display = "block";
+            btnGrabarIntento.dataset.respuesta = data.respuesta;
+        };
+    });
+}
+
+function mostrarImagenes(urls) {
+    imagenesContenedor.innerHTML = "";
+    urls.forEach(url => {
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "Imagen";
+        imagenesContenedor.appendChild(img);
+    });
+}
+
+// --- EJERCICIO DE REPETICIÓN ---
+let mediaRecorderIntento;
+let audioChunksIntento = [];
+
+btnGrabarIntento.addEventListener("mousedown", () => {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        mediaRecorderIntento = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        audioChunksIntento = [];
+        mediaRecorderIntento.addEventListener("dataavailable", e => audioChunksIntento.push(e.data));
+        mediaRecorderIntento.addEventListener("stop", () => {
+            if (audioChunksIntento.length === 0) return;
+            const blob = new Blob(audioChunksIntento, { type: "audio/webm" });
+            audioChunksIntento = [];
+            const formData = new FormData();
+            formData.append("file", blob, "intento.webm");
+            mensajeValidacion.innerText = "⏳ Procesando tu repetición, espera un momento...";
+            btnGrabarIntento.style.display = "none";
+
+            fetch("/voz", { method: "POST", body: formData })
+            .then(res => res.json())
+            .then(data => {
+                const respuestaCorrecta = btnGrabarIntento.dataset.respuesta || btnGrabarIntento.dataset.oracion || "";
+                if (data.texto) validarIntento(respuestaCorrecta, data.texto);
+                else { mensajeValidacion.innerText = "❌ No pude entender lo que dijiste."; btnGrabarIntento.style.display = "block"; }
+            })
+            .catch(() => { mensajeValidacion.innerText = "❌ Hubo un error al procesar tu repetición."; btnGrabarIntento.style.display = "block"; });
+        });
+
+        mediaRecorderIntento.start();
+        mensajeValidacion.innerText = "🎙️ Grabando tu repetición... ¡Suelta el botón cuando termines!";
+    }).catch(() => { mensajeValidacion.innerText = "❌ No se pudo acceder al micrófono."; });
+});
+
+btnGrabarIntento.addEventListener("mouseup", () => {
+    if (mediaRecorderIntento && mediaRecorderIntento.state === "recording") {
+        mediaRecorderIntento.stop();
+    }
+});
+
+// --- VALIDACIÓN DEL INTENTO ---
+function validarIntento(respuestaCorrecta, intentoNiño) {
+    fetch("/validar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ respuesta: respuestaCorrecta, intento: intentoNiño })
+    })
+    .then(res => res.json())
+    .then(data => {
+        const mensajeFinal = data.mensaje + ` (Tú dijiste: "${intentoNiño}")`;
+        mensajeValidacion.innerText = mensajeFinal;
+        btnGrabarIntento.style.display = "none";
+
+        fetch("/tts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ texto: data.mensaje })
+        })
+        .then(res => res.json())
+        .then(dataTTS => {
+            if (dataTTS.audio_url) {
+                const audioMensaje = new Audio(dataTTS.audio_url + "?t=" + new Date().getTime());
+                audioMensaje.onended = () => {
+                    if (!btnGrabarIntento.dataset.oracion) {
+                        if (data.mensaje.includes("¡Muy bien") || data.mensaje.includes("Correcto") || data.mensaje.includes("Excelente")) {
+                            palabrasPendientes.shift();
+                            palabrasCompletadas++;
+                            reproducirSiguientePalabra();
+                        } else {
+                            btnGrabarIntento.style.display = "block";
+                        }
+                    } else {
+                        if (data.mensaje.includes("¡Muy bien") || data.mensaje.includes("Correcto") || data.mensaje.includes("Excelente")) {
+                            contenedorEjercicios.style.display = "block";
+                        } else {
+                            btnGrabarIntento.style.display = "block";
+                        }
+                    }
+                };
+                audioMensaje.play().catch(err => console.log("Error al reproducir TTS:", err));
+            }
+        });
+    });
+}
+
+// --- BOTONES DE EJERCICIOS ---
+btnFrases.addEventListener("click", async () => {
+    respuestaElemento.innerText = "⏳ Pidiéndole 5 palabras (A, E, I, O, U) al asistente...";
+    try {
+        let res = await fetch("/ejercicios_frases");
+        if (!res.ok) throw new Error("Error de red al cargar palabras.");
+        let data = await res.json();
+        if (data.error || !data.palabras || data.palabras.length === 0) {
+            respuestaElemento.innerText = "❌ Error al cargar palabras: " + (data.error || "No se recibieron palabras. Verifica el backend.");
+            contenedorEjercicios.style.display = "block";
+            return;
+        }
+        iniciarSecuenciaPalabras(data.palabras);
+    } catch (error) {
+        respuestaElemento.innerText = `❌ Error al iniciar el ejercicio de palabras: ${error.message}. Asegúrate que app.py esté funcionando.`;
+        contenedorEjercicios.style.display = "block";
+    }
+});
+
+btnOraciones.addEventListener("click", () => {
+    const vocales = ["A", "E", "I", "O", "U"];
+    const vocalAleatoria = vocales[Math.floor(Math.random() * vocales.length)];
+    iniciarEjercicioVocal(vocalAleatoria);
+    respuestaElemento.innerText = `🧠 Preparando oración para la vocal: ${vocalAleatoria}...`;
+});
+</script>
+</body>
+</html>
