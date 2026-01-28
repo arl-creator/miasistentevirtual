@@ -21,8 +21,6 @@ openai.api_base = "https://api.deepseek.com/v1"
 app = Flask(__name__)
 os.makedirs("static/audio", exist_ok=True)
 
-generar_audios_pregrabados()
-
 # URLs de imágenes para cada categoría (debes poner esas imágenes en static/img/)
 imagenes_fijas = {
     "vocales": [
@@ -150,7 +148,8 @@ def generar_audios_pregrabados():
             print(f"Generando audio para: {clave}") 
             tts = gTTS(datos["texto"], lang="es") 
             os.makedirs(os.path.dirname(ruta_audio), exist_ok=True) 
-            tts.save(ruta_audio) 
+            tts.save(ruta_audio)
+            generar_audios_pregrabados()
 
             
 @app.route("/") 
@@ -394,6 +393,7 @@ def oracion_vocal():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
