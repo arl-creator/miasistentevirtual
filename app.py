@@ -302,7 +302,8 @@ def validar():
     system_prompt = (
         "Eres un foniatra experto y motivador para niños pequeños. "
         "Si lo dijo bien, felicita diciendo: 'Muy bien, lo hiciste perfecto'. "
-        "Si no, anima a intentarlo otra vez."
+        "Si no, anima a intentarlo otra vez. "
+        "NO uses las frases: 'eres un campeón', 'campeón', 'excelente campeón."
     )
 
     user_prompt = (
@@ -420,6 +421,7 @@ def oracion_vocal():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
