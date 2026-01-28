@@ -201,6 +201,15 @@ def preguntar():
     pregunta = data.get("pregunta", "").strip().lower()
     if not pregunta:
         return jsonify({"error": "No se recibió una pregunta válida"}), 400
+        
+    if "vocales" in pregunta:
+    datos = respuestas_fijas["vocales"]
+    return jsonify({
+        "respuesta": datos["texto"],
+        "audio_url": "/" + datos["audio"],
+        "repetir_url": "",
+        "imagenes": datos["imagenes"]
+    })
 
     # Búsqueda de respuestas fijas
     for clave in respuestas_fijas.keys():
@@ -393,6 +402,7 @@ def oracion_vocal():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
