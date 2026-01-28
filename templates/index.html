@@ -451,6 +451,30 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
         mensajeValidacion.innerText = mensajeFinal;
         btnGrabarIntento.style.display = "none";
 
+         const esCorrecto =
+            data.correcto === true ||
+            data.mensaje.includes("¡Muy bien") ||
+            data.mensaje.includes("Correcto") ||
+            data.mensaje.includes("Excelente");
+
+        // 🔹 1. AVANZAMOS LÓGICA (SIN ESPERAR AUDIO)
+        if (!btnGrabarIntento.dataset.oracion) {
+            if (esCorrecto) {
+                palabrasPendientes.shift();
+                palabrasCompletadas++;
+                reproducirSiguientePalabra();
+            } else {
+                btnGrabarIntento.style.display = "block";
+            }
+        } else {
+            if (esCorrecto) {
+                contenedorEjercicios.style.display = "block";
+            } else {
+                btnGrabarIntento.style.display = "block";
+            }
+        }
+
+        // 🔊 2. EL AUDIO SE REPRODUCE INDEPENDIENTE
         fetch("/tts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -459,27 +483,17 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
         .then(res => res.json())
         .then(dataTTS => {
             if (dataTTS.audio_url) {
-                const audioMensaje = new Audio(dataTTS.audio_url + "?t=" + new Date().getTime());
-                audioMensaje.onended = () => {
-                    if (!btnGrabarIntento.dataset.oracion) {
-                        if (data.mensaje.includes("¡Muy bien") || data.mensaje.includes("Correcto") || data.mensaje.includes("Excelente")) {
-                            palabrasPendientes.shift();
-                            palabrasCompletadas++;
-                            reproducirSiguientePalabra();
-                        } else {
-                            btnGrabarIntento.style.display = "block";
-                        }
-                    } else {
-                        if (data.mensaje.includes("¡Muy bien") || data.mensaje.includes("Correcto") || data.mensaje.includes("Excelente")) {
-                            contenedorEjercicios.style.display = "block";
-                        } else {
-                            btnGrabarIntento.style.display = "block";
-                        }
-                    }
-                };
-                audioMensaje.play().catch(err => console.log("Error al reproducir TTS:", err));
+                const audioMensaje = new Audio(
+                    dataTTS.audio_url + "?t=" + new Date().getTime()
+                );
+                audioMensaje.play().catch(() => {});
             }
         });
+
+    })
+    .catch(() => {
+        mensajeValidacion.innerText = "❌ Ocurrió un error al validar. Intenta de nuevo.";
+        btnGrabarIntento.style.display = "block";
     });
 }
 
@@ -512,4 +526,5 @@ btnOraciones.addEventListener("click", () => {
 </body>
 
 </html>
+
 
