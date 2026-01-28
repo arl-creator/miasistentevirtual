@@ -303,8 +303,19 @@ def validar():
     )
 
     mensaje_ia = obtener_respuesta_deepseek(user_prompt, system_prompt=system_prompt, temperature=0.5)
-    return jsonify({"mensaje": mensaje_ia})
+    #return jsonify({"mensaje": mensaje_ia})
+    # 🔑 DETECTAMOS SI ES CORRECTO (SIN ROMPER TU LÓGICA)
+    correcto = "muy bien" in mensaje_ia.lower() or "perfecto" in mensaje_ia.lower()
 
+    return jsonify({
+        "mensaje": mensaje_ia,
+        "correcto": correcto,
+
+        # 🔽 ESTO ES LO QUE HACE QUE APAREZCA LA PANTALLA DE LA IMAGEN
+        "mostrar_vocales": correcto,
+        "vocales": ["A", "E", "I", "O", "U"],
+        "mostrar_botones": correcto
+    })
 
 # --- ENDPOINT PARA EJERCICIOS DE FONÉTICA ---
 
@@ -395,6 +406,7 @@ def oracion_vocal():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
