@@ -4,3 +4,7 @@ openai
 speechrecognition
 gTTS
 pydub
+gunicorn
+requests
+
+
