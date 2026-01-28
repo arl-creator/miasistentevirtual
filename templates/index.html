@@ -229,18 +229,19 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
         enviarAudio(blob);
     });
 
-    botonMicrofono.addEventListener("mousedown", () => {
-        audioChunks = [];
+    botonMicrofono.addEventListener("pointerdown", () => {
+    audioChunks = [];
         mediaRecorder.start();
         respuestaElemento.innerText = "🎙️ Grabando... ¡Suelta para terminar!";
         imagenesContenedor.innerHTML = "";
         contenedorEjercicios.style.display = "none";
     });
-
-    botonMicrofono.addEventListener("mouseup", () => {
+    
+    botonMicrofono.addEventListener("pointerup", () => {
         mediaRecorder.stop();
         respuestaElemento.innerText = "⏳ Procesando tu pregunta...";
     });
+
 });
 
 function enviarAudio(audioBlob) {
@@ -403,40 +404,56 @@ function mostrarImagenes(urls) {
 let mediaRecorderIntento;
 let audioChunksIntento = [];
 
-btnGrabarIntento.addEventListener("mousedown", () => {
+btnGrabarIntento.addEventListener("pointerdown", () => {
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        mediaRecorderIntento = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        mediaRecorderIntento = new MediaRecorder(stream, { mimeType: "audio/webm" });
         audioChunksIntento = [];
-        mediaRecorderIntento.addEventListener("dataavailable", e => audioChunksIntento.push(e.data));
-        mediaRecorderIntento.addEventListener("stop", () => {
+
+        mediaRecorderIntento.ondataavailable = e => audioChunksIntento.push(e.data);
+
+        mediaRecorderIntento.onstop = () => {
             if (audioChunksIntento.length === 0) return;
+
             const blob = new Blob(audioChunksIntento, { type: "audio/webm" });
             audioChunksIntento = [];
+
             const formData = new FormData();
             formData.append("file", blob, "intento.webm");
-            mensajeValidacion.innerText = "⏳ Procesando tu repetición, espera un momento...";
+
+            mensajeValidacion.innerText = "⏳ Escuchando lo que dijiste...";
             btnGrabarIntento.style.display = "none";
 
             fetch("/voz", { method: "POST", body: formData })
-            .then(res => res.json())
-            .then(data => {
-                const respuestaCorrecta = btnGrabarIntento.dataset.respuesta || btnGrabarIntento.dataset.oracion || "";
-                if (data.texto) validarIntento(respuestaCorrecta, data.texto);
-                else { mensajeValidacion.innerText = "❌ No pude entender lo que dijiste."; btnGrabarIntento.style.display = "block"; }
-            })
-            .catch(() => { mensajeValidacion.innerText = "❌ Hubo un error al procesar tu repetición."; btnGrabarIntento.style.display = "block"; });
-        });
+                .then(res => res.json())
+                .then(data => {
+                    const respuestaCorrecta =
+                        btnGrabarIntento.dataset.respuesta ||
+                        btnGrabarIntento.dataset.oracion || "";
+
+                    if (data.texto) {
+                        validarIntento(respuestaCorrecta, data.texto);
+                    } else {
+                        mensajeValidacion.innerText = "❌ No entendí lo que dijiste";
+                        btnGrabarIntento.style.display = "block";
+                    }
+                })
+                .catch(() => {
+                    mensajeValidacion.innerText = "❌ Error al escuchar";
+                    btnGrabarIntento.style.display = "block";
+                });
+        };
 
         mediaRecorderIntento.start();
-        mensajeValidacion.innerText = "🎙️ Grabando tu repetición... ¡Suelta el botón cuando termines!";
-    }).catch(() => { mensajeValidacion.innerText = "❌ No se pudo acceder al micrófono."; });
+        mensajeValidacion.innerText = "🎙️ Habla ahora...";
+    });
 });
 
-btnGrabarIntento.addEventListener("mouseup", () => {
+btnGrabarIntento.addEventListener("pointerup", () => {
     if (mediaRecorderIntento && mediaRecorderIntento.state === "recording") {
         mediaRecorderIntento.stop();
     }
 });
+
 
 // --- VALIDACIÓN DEL INTENTO ---
 function validarIntento(respuestaCorrecta, intentoNiño) {
@@ -447,34 +464,18 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
     })
     .then(res => res.json())
     .then(data => {
+
         const mensajeFinal = data.mensaje + ` (Tú dijiste: "${intentoNiño}")`;
         mensajeValidacion.innerText = mensajeFinal;
         btnGrabarIntento.style.display = "none";
 
-         const esCorrecto =
+        const esCorrecto =
             data.correcto === true ||
-            data.mensaje.includes("¡Muy bien") ||
+            data.mensaje.includes("Muy bien") ||
             data.mensaje.includes("Correcto") ||
             data.mensaje.includes("Excelente");
 
-        // 🔹 1. AVANZAMOS LÓGICA (SIN ESPERAR AUDIO)
-        if (!btnGrabarIntento.dataset.oracion) {
-            if (esCorrecto) {
-                palabrasPendientes.shift();
-                palabrasCompletadas++;
-                reproducirSiguientePalabra();
-            } else {
-                btnGrabarIntento.style.display = "block";
-            }
-        } else {
-            if (esCorrecto) {
-                contenedorEjercicios.style.display = "block";
-            } else {
-                btnGrabarIntento.style.display = "block";
-            }
-        }
-
-        // 🔊 2. EL AUDIO SE REPRODUCE INDEPENDIENTE
+        // 🔊 1. GENERAMOS Y REPRODUCIMOS EL AUDIO
         fetch("/tts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -482,12 +483,37 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
         })
         .then(res => res.json())
         .then(dataTTS => {
-            if (dataTTS.audio_url) {
-                const audioMensaje = new Audio(
-                    dataTTS.audio_url + "?t=" + new Date().getTime()
-                );
-                audioMensaje.play().catch(() => {});
+            if (!dataTTS.audio_url) {
+                btnGrabarIntento.style.display = "block";
+                return;
             }
+
+            const audioMensaje = new Audio(
+                dataTTS.audio_url + "?t=" + new Date().getTime()
+            );
+
+            // ✅ 2. SOLO CUANDO TERMINA DE HABLAR → AVANZAMOS
+            audioMensaje.onended = () => {
+                if (!btnGrabarIntento.dataset.oracion) {
+                    if (esCorrecto) {
+                        palabrasPendientes.shift();
+                        palabrasCompletadas++;
+                        reproducirSiguientePalabra();
+                    } else {
+                        btnGrabarIntento.style.display = "block";
+                    }
+                } else {
+                    if (esCorrecto) {
+                        contenedorEjercicios.style.display = "block";
+                    } else {
+                        btnGrabarIntento.style.display = "block";
+                    }
+                }
+            };
+
+            audioMensaje.play().catch(() => {
+                btnGrabarIntento.style.display = "block";
+            });
         });
 
     })
@@ -496,6 +522,7 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
         btnGrabarIntento.style.display = "block";
     });
 }
+
 
 // --- BOTONES DE EJERCICIOS ---
 btnFrases.addEventListener("click", async () => {
@@ -526,5 +553,6 @@ btnOraciones.addEventListener("click", () => {
 </body>
 
 </html>
+
 
 
