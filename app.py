@@ -14,6 +14,7 @@ import difflib
 # Cargar API Key
 load_dotenv()
 openai.api_key = os.getenv("DEEPSEEK_API_KEY")
+print("DEEPSEEK_API_KEY:", os.getenv("DEEPSEEK_API_KEY"))
 
 openai.api_base = "https://api.deepseek.com/v1"
 
@@ -393,6 +394,7 @@ def oracion_vocal():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
