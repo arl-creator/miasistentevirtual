@@ -14,7 +14,7 @@ import difflib
 # Cargar API Key
 load_dotenv()
 openai.api_key = os.getenv("DEEPSEEK_API_KEY")
-print("DEEPSEEK_API_KEY:", os.getenv("DEEPSEEK_API_KEY"))
+#print("DEEPSEEK_API_KEY:", os.getenv("DEEPSEEK_API_KEY"))
 
 openai.api_base = "https://api.deepseek.com/v1"
 
@@ -182,17 +182,21 @@ def generar_tts():
     data = request.get_json()
     texto = data.get("texto", "")
 
-    if not texto: 
+    if not texto:
         return jsonify({"error": "No se recibió texto"}), 400
 
-    try: 
-        tts = gTTS(text=texto, lang="es") 
-        #audio_path = os.path.join("static", "audio", f"{uuid.uuid4()}.mp3")
-        audio_path = "/tmp/audio_respuesta.mp3"
-        tts.save(audio_path) 
-        return jsonify({"audio_url": f"/{audio_path}"}) 
-    except Exception as e: return jsonify({"error": str(e)}), 500
+    try:
+        filename = f"{uuid.uuid4()}.mp3"
+        audio_path = os.path.join("static", "audio", filename)
 
+        tts = gTTS(text=texto, lang="es")
+        tts.save(audio_path)
+
+        return jsonify({
+            "audio_url": f"/static/audio/{filename}"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # --- ENDPOINTS DE OPERACIÓN ---
@@ -223,8 +227,12 @@ def preguntar():
 
     # Respuesta con API
     respuesta = obtener_respuesta_deepseek(pregunta)
+    #audio_filename = f"{uuid.uuid4()}.mp3"
+    #audio_path = "/tmp/audio_respuesta.mp3"
+    #tts = gTTS(respuesta, lang="es")
+    #tts.save(audio_path)
     audio_filename = f"{uuid.uuid4()}.mp3"
-    audio_path = "/tmp/audio_respuesta.mp3"
+    audio_path = os.path.join("static", "audio", audio_filename)
     tts = gTTS(respuesta, lang="es")
     tts.save(audio_path)
 
@@ -286,35 +294,41 @@ def validar():
     intento_nino = data.get("intento", "").lower()
 
     if not respuesta_correcta or not intento_nino:
-        return jsonify({"mensaje": "Error: Datos de validación incompletos."})
+        return jsonify({
+            "mensaje": "Intenta otra vez",
+            "correcto": False
+        })
 
     system_prompt = (
-        "Eres un foniatra experto y motivador para niños de preescolar. Tu único trabajo es dar un feedback. "
-        "Compara la 'Respuesta Correcta' (palabra o frase) con el 'Intento del Niño'. "
-        "Si el intento es muy similar o idéntico a la respuesta, felicítalo brevemente con una frase como: '¡Muy bien, lo hiciste perfecto!'. "
-        "Si solo se parece o faltan partes importantes, motívalo a reintentar diciendo algo como: '¡Casi lo tienes! Inténtalo de nuevo con más fuerza y escucha bien la palabra.' "
-        "Tu respuesta debe ser solo el mensaje de feedback para el niño, no incluyas el texto que dijo el niño."
-    )
-    
-    user_prompt = (
-        f"Respuesta Correcta: '{respuesta_correcta}'\n"
-        f"Intento del Niño: '{intento_nino}'\n"
-        "Compara y da el feedback."
+        "Eres un foniatra experto y motivador para niños pequeños. "
+        "Si lo dijo bien, felicita diciendo: 'Muy bien, lo hiciste perfecto'. "
+        "Si no, anima a intentarlo otra vez."
     )
 
-    mensaje_ia = obtener_respuesta_deepseek(user_prompt, system_prompt=system_prompt, temperature=0.5)
-    #return jsonify({"mensaje": mensaje_ia})
-    # 🔑 DETECTAMOS SI ES CORRECTO (SIN ROMPER TU LÓGICA)
-    correcto = "muy bien" in mensaje_ia.lower() or "perfecto" in mensaje_ia.lower()
+    user_prompt = (
+        f"Respuesta correcta: {respuesta_correcta}\n"
+        f"Intento del niño: {intento_nino}"
+    )
+
+    mensaje = obtener_respuesta_deepseek(
+        user_prompt,
+        system_prompt=system_prompt,
+        temperature=0.4
+    )
+
+    correcto = "muy bien" in mensaje.lower() or "perfecto" in mensaje.lower()
+
+    # 🔊 AQUÍ HACEMOS QUE HABLE
+    audio_name = f"{uuid.uuid4()}.mp3"
+    audio_path = os.path.join("static", "audio", audio_name)
+    gTTS(mensaje, lang="es").save(audio_path)
 
     return jsonify({
-        "mensaje": mensaje_ia,
+        "mensaje": mensaje,
+        "audio_url": f"/static/audio/{audio_name}",
         "correcto": correcto,
-
-        # 🔽 ESTO ES LO QUE HACE QUE APAREZCA LA PANTALLA DE LA IMAGEN
-        "mostrar_vocales": correcto,
-        "vocales": ["A", "E", "I", "O", "U"],
-        "mostrar_botones": correcto
+        "mostrar_boton_repetir": True,
+        "avanzar": correcto
     })
 
 # --- ENDPOINT PARA EJERCICIOS DE FONÉTICA ---
@@ -406,6 +420,7 @@ def oracion_vocal():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
