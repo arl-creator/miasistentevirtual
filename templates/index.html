@@ -365,6 +365,12 @@ function enviarPregunta(pregunta) {
     .then(data => {
         respuestaElemento.innerText = "🧠 " + data.respuesta;
         mostrarImagenes(data.imagenes || []);
+        if (data.respuesta && data.respuesta.toLowerCase().includes("vocales")) {
+            setTimeout(() => {
+                iniciarSecuenciaPalabras(["abeja", "elefante", "iguana", "oso", "uva"]);
+            }, 1500); // espera a que termine el audio
+            return;
+        }
         const audioRespuesta = document.getElementById("audio-respuesta");
         const audioRepeticion = document.getElementById("audio-repeticion");
         btnGrabarIntento.style.display = "none";
@@ -510,4 +516,5 @@ btnOraciones.addEventListener("click", () => {
 });
 </script>
 </body>
+
 </html>
