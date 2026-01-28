@@ -187,7 +187,8 @@ def generar_tts():
 
     try: 
         tts = gTTS(text=texto, lang="es") 
-        audio_path = os.path.join("static", "audio", f"{uuid.uuid4()}.mp3") 
+        #audio_path = os.path.join("static", "audio", f"{uuid.uuid4()}.mp3")
+        audio_path = "/tmp/audio_respuesta.mp3"
         tts.save(audio_path) 
         return jsonify({"audio_url": f"/{audio_path}"}) 
     except Exception as e: return jsonify({"error": str(e)}), 500
@@ -223,7 +224,7 @@ def preguntar():
     # Respuesta con API
     respuesta = obtener_respuesta_deepseek(pregunta)
     audio_filename = f"{uuid.uuid4()}.mp3"
-    audio_path = os.path.join("static", "audio", audio_filename)
+    audio_path = "/tmp/audio_respuesta.mp3"
     tts = gTTS(respuesta, lang="es")
     tts.save(audio_path)
 
@@ -394,6 +395,7 @@ def oracion_vocal():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
