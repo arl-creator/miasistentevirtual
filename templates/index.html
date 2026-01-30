@@ -215,7 +215,11 @@ const contenedorEjercicios = document.getElementById("contenedor-ejercicios");
 const btnFrases = document.getElementById("btn-frases");
 const btnOraciones = document.getElementById("btn-oraciones");
 const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const opcionesAudio = esMovil
+  ? { mimeType: "audio/mp4" }
+  : { mimeType: "audio/webm" };
 
+  
 let palabrasPendientes = [];
 let palabrasCompletadas = 0;
 let mediaRecorder;
@@ -545,6 +549,7 @@ btnOraciones.addEventListener("click", () => {
 </body>
 
 </html>
+
 
 
 
