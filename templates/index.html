@@ -214,49 +214,57 @@ const mensajeValidacion = document.getElementById("mensaje-validacion");
 const contenedorEjercicios = document.getElementById("contenedor-ejercicios");
 const btnFrases = document.getElementById("btn-frases");
 const btnOraciones = document.getElementById("btn-oraciones");
+const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 let palabrasPendientes = [];
 let palabrasCompletadas = 0;
 let mediaRecorder;
+let mediaRecorderIntento;
 let audioChunks = [];
+let audioChunksIntento = [];
 
 navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-    mediaRecorder = new MediaRecorder(stream);
-    mediaRecorder.addEventListener("dataavailable", e => audioChunks.push(e.data));
-    mediaRecorder.addEventListener("stop", () => {
-        const blob = new Blob(audioChunks, { type: "audio/webm" });
-        audioChunks = [];
-        enviarAudio(blob);
-    });
+  mediaRecorder = new MediaRecorder(stream, opcionesAudio);
 
-    botonMicrofono.addEventListener("pointerdown", () => {
+  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+
+  mediaRecorder.onstop = () => {
+    const tipo = esMovil ? "audio/mp4" : "audio/webm";
+    const nombre = esMovil ? "pregunta.mp4" : "pregunta.webm";
+    const blob = new Blob(audioChunks, { type: tipo });
+    enviarAudio(blob, nombre);
+  };
+
+  botonMicrofono.addEventListener("pointerdown", () => {
     audioChunks = [];
-        mediaRecorder.start();
-        respuestaElemento.innerText = "🎙️ Grabando... ¡Suelta para terminar!";
-        imagenesContenedor.innerHTML = "";
-        contenedorEjercicios.style.display = "none";
-    });
-    
-    botonMicrofono.addEventListener("pointerup", () => {
-        mediaRecorder.stop();
-        respuestaElemento.innerText = "⏳ Procesando tu pregunta...";
-    });
+    mediaRecorder.start();
+    respuestaElemento.innerText = "🎙️ Grabando... suelta para terminar";
+  });
 
+  botonMicrofono.addEventListener("pointerup", () => {
+    if (mediaRecorder.state === "recording") {
+      mediaRecorder.stop();
+      respuestaElemento.innerText = "⏳ Procesando...";
+    }
+  });
 });
-
-function enviarAudio(audioBlob) {
+  
+function enviarAudio(audioBlob, nombreArchivo) {
     const formData = new FormData();
-    formData.append("file", audioBlob, "pregunta.webm");
+    formData.append("file", audioBlob, nombreArchivo);
 
-    fetch("/voz", { method: "POST", body: formData })
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                respuestaElemento.innerText = "❌ " + data.error;
-                return;
-            }
-            enviarPregunta(data.texto);
-        });
+    fetch("/voz", {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        respuestaElemento.innerText = data.respuesta || "🤖 Sin respuesta";
+    })
+    .catch(err => {
+        console.error(err);
+        respuestaElemento.innerText = "❌ Error al procesar audio";
+    });
 }
 
 // --- LÓGICA DE EJERCICIOS DE PALABRAS ---
@@ -400,60 +408,44 @@ function mostrarImagenes(urls) {
     });
 }
 
-// --- EJERCICIO DE REPETICIÓN ---
-let mediaRecorderIntento;
-let audioChunksIntento = [];
 
 btnGrabarIntento.addEventListener("pointerdown", () => {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        mediaRecorderIntento = new MediaRecorder(stream, { mimeType: "audio/webm" });
-        audioChunksIntento = [];
+  audioChunksIntento = [];
 
-        mediaRecorderIntento.ondataavailable = e => audioChunksIntento.push(e.data);
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    mediaRecorderIntento = new MediaRecorder(stream, opcionesAudio);
 
-        mediaRecorderIntento.onstop = () => {
-            if (audioChunksIntento.length === 0) return;
+    mediaRecorderIntento.ondataavailable = e => audioChunksIntento.push(e.data);
 
-            const blob = new Blob(audioChunksIntento, { type: "audio/webm" });
-            audioChunksIntento = [];
+    mediaRecorderIntento.onstop = () => {
+      const tipo = esMovil ? "audio/mp4" : "audio/webm";
+      const nombre = esMovil ? "intento.mp4" : "intento.webm";
+      const blob = new Blob(audioChunksIntento, { type: tipo });
+      enviarIntento(blob, nombre);
+    };
 
-            const formData = new FormData();
-            formData.append("file", blob, "intento.webm");
-
-            mensajeValidacion.innerText = "⏳ Escuchando lo que dijiste...";
-            btnGrabarIntento.style.display = "none";
-
-            fetch("/voz", { method: "POST", body: formData })
-                .then(res => res.json())
-                .then(data => {
-                    const respuestaCorrecta =
-                        btnGrabarIntento.dataset.respuesta ||
-                        btnGrabarIntento.dataset.oracion || "";
-
-                    if (data.texto) {
-                        validarIntento(respuestaCorrecta, data.texto);
-                    } else {
-                        mensajeValidacion.innerText = "❌ No entendí lo que dijiste";
-                        btnGrabarIntento.style.display = "block";
-                    }
-                })
-                .catch(() => {
-                    mensajeValidacion.innerText = "❌ Error al escuchar";
-                    btnGrabarIntento.style.display = "block";
-                });
-        };
-
-        mediaRecorderIntento.start();
-        mensajeValidacion.innerText = "🎙️ Habla ahora...";
-    });
+    mediaRecorderIntento.start();
+    mensajeValidacion.innerText = "🎙️ Habla ahora...";
+  });
 });
 
 btnGrabarIntento.addEventListener("pointerup", () => {
-    if (mediaRecorderIntento && mediaRecorderIntento.state === "recording") {
-        mediaRecorderIntento.stop();
-    }
+  if (mediaRecorderIntento?.state === "recording") {
+    mediaRecorderIntento.stop();
+  }
 });
 
+function enviarIntento(blob, nombre) {
+  const formData = new FormData();
+  formData.append("file", blob, nombre);
+
+  fetch("/intento", { method: "POST", body: formData })
+    .then(res => res.json())
+    .then(data => {
+      validarIntento(btnGrabarIntento.dataset.respuesta, data.texto);
+    })
+    .catch(() => mensajeValidacion.innerText = "❌ Error al escuchar");
+}
 
 // --- VALIDACIÓN DEL INTENTO ---
 function validarIntento(respuestaCorrecta, intentoNiño) {
@@ -553,6 +545,7 @@ btnOraciones.addEventListener("click", () => {
 </body>
 
 </html>
+
 
 
 
