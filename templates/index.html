@@ -263,13 +263,19 @@ function enviarAudio(audioBlob, nombreArchivo) {
     })
     .then(res => res.json())
     .then(data => {
-        respuestaElemento.innerText = data.respuesta || "🤖 Sin respuesta";
+        if (data.texto) {
+            respuestaElemento.innerText = "🧠 Entendí: " + data.texto;
+            enviarPregunta(data.texto); // 🔥 aquí ya fluye todo
+        } else {
+            respuestaElemento.innerText = "❌ No entendí lo que dijiste";
+        }
     })
     .catch(err => {
         console.error(err);
         respuestaElemento.innerText = "❌ Error al procesar audio";
     });
 }
+
 
 // --- LÓGICA DE EJERCICIOS DE PALABRAS ---
 async function iniciarSecuenciaPalabras(palabras) {
@@ -549,6 +555,7 @@ btnOraciones.addEventListener("click", () => {
 </body>
 
 </html>
+
 
 
 
