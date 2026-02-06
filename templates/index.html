@@ -449,12 +449,23 @@ function enviarIntento(blob, nombre) {
   const formData = new FormData();
   formData.append("file", blob, nombre);
 
-  fetch("/intento", { method: "POST", body: formData })
+  fetch("/voz", { method: "POST", body: formData })
     .then(res => res.json())
     .then(data => {
-      validarIntento(btnGrabarIntento.dataset.respuesta, data.texto);
+      if (data.texto && data.texto.trim() !== "") {
+        validarIntento(
+          btnGrabarIntento.dataset.respuesta,
+          data.texto
+        );
+      } else {
+        mensajeValidacion.innerText = "👂 No te escuché bien, intenta otra vez";
+        btnGrabarIntento.style.display = "block";
+      }
     })
-    .catch(() => mensajeValidacion.innerText = "❌ Error al escuchar");
+    .catch(() => {
+      mensajeValidacion.innerText = "❌ Error al escuchar";
+      btnGrabarIntento.style.display = "block";
+    });
 }
 
 // --- VALIDACIÓN DEL INTENTO ---
@@ -555,6 +566,7 @@ btnOraciones.addEventListener("click", () => {
 </body>
 
 </html>
+
 
 
 
