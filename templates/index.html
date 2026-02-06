@@ -199,8 +199,8 @@
         <button id="btn-frases">🗣️ Practicar Palabras (A, E, I, O, U)</button>
         <button id="btn-oraciones">🔠 Practicar Oraciones</button>
     </div>
-    <audio id="audio-respuesta"></audio>
-    <audio id="audio-repeticion"></audio>
+    <audio id="audio-respuesta" playsinline></audio>
+    <audio id="audio-repeticion" playsinline></audio>
 </main>
 <footer>
     <p>¡Habla y descubre!</p>
@@ -226,6 +226,10 @@ let mediaRecorder;
 let mediaRecorderIntento;
 let audioChunks = [];
 let audioChunksIntento = [];
+
+if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+  respuestaElemento.innerText = "❌ Tu navegador no permite usar el micrófono";
+}
 
 navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
   mediaRecorder = new MediaRecorder(stream, opcionesAudio);
@@ -444,6 +448,16 @@ btnGrabarIntento.addEventListener("pointerup", () => {
     mediaRecorderIntento.stop();
   }
 });
+  
+btnGrabarIntento.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  btnGrabarIntento.dispatchEvent(new Event("pointerdown"));
+});
+
+btnGrabarIntento.addEventListener("touchend", (e) => {
+  e.preventDefault();
+  btnGrabarIntento.dispatchEvent(new Event("pointerup"));
+});
 
 function enviarIntento(blob, nombre) {
   const formData = new FormData();
@@ -566,6 +580,7 @@ btnOraciones.addEventListener("click", () => {
 </body>
 
 </html>
+
 
 
 
