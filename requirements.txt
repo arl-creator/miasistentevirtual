@@ -6,6 +6,8 @@ gTTS
 pydub
 gunicorn
 requests
+ffmpeg-python
+
 
 
 
