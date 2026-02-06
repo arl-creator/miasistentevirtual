@@ -13,7 +13,8 @@ import json
 
 # Cargar API Key
 load_dotenv()
-openai.api_key = os.getenv("DEEPSEEK_API_KEY")
+openai.api_key = os.environ.get("DEEPSEEK_API_KEY")
+#openai.api_key = os.getenv("DEEPSEEK_API_KEY")
 #print("DEEPSEEK_API_KEY:", os.getenv("DEEPSEEK_API_KEY"))
 
 openai.api_base = "https://api.deepseek.com/v1"
@@ -263,26 +264,46 @@ def reconocer_voz():
     if not audio_content:
         return jsonify({"error": "El archivo de audio está vacío."}), 400
 
-    webm_path = tempfile.NamedTemporaryFile(delete=False, suffix=".webm").name
+    # Detectar extensión real del archivo (mp4 celular / webm PC)
+    extension = os.path.splitext(audio_file.filename)[1].lower()
+    if extension not in [".webm", ".mp4"]:
+        extension = ".webm"  # fallback seguro
+
+    input_path = tempfile.NamedTemporaryFile(delete=False, suffix=extension).name
     wav_path = tempfile.NamedTemporaryFile(delete=False, suffix=".wav").name
 
     try:
-        with open(webm_path, "wb") as f:
+        # Guardar audio recibido
+        with open(input_path, "wb") as f:
             f.write(audio_content)
-        AudioSegment.from_file(webm_path, format="webm").export(wav_path, format="wav")
 
+        # Convertir a WAV según formato
+        if extension == ".mp4":
+            AudioSegment.from_file(input_path, format="mp4").export(wav_path, format="wav")
+        else:
+            AudioSegment.from_file(input_path, format="webm").export(wav_path, format="wav")
+
+        # Leer audio para reconocimiento
         with sr.AudioFile(wav_path) as source:
             audio = recognizer.record(source)
 
-        texto = recognizer.recognize_google(audio, language="es-ES").strip()
+        # Reconocimiento de voz con manejo de errores
+        try:
+            texto = recognizer.recognize_google(audio, language="es-ES").strip()
+        except sr.UnknownValueError:
+            return jsonify({"texto": ""})
+        except sr.RequestError:
+            return jsonify({"error": "Servicio de reconocimiento no disponible"}), 500
+
         return jsonify({"texto": texto})
 
     except Exception as e:
         return jsonify({"error": f"No se pudo procesar la voz: {str(e)}"}), 400
 
     finally:
-        if os.path.exists(webm_path):
-            os.remove(webm_path)
+        # Limpieza de archivos temporales
+        if os.path.exists(input_path):
+            os.remove(input_path)
         if os.path.exists(wav_path):
             os.remove(wav_path)
 
@@ -422,8 +443,9 @@ def oracion_vocal():
 
 
 if __name__ == "__main__":
-    #port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
