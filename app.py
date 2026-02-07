@@ -264,10 +264,15 @@ def reconocer_voz():
     if not audio_content:
         return jsonify({"error": "El archivo de audio está vacío."}), 400
 
-    # Detectar extensión real del archivo (mp4 celular / webm PC)
-    extension = os.path.splitext(audio_file.filename)[1].lower()
-    if extension not in [".webm", ".mp4"]:
-        extension = ".webm"  # fallback seguro
+    # Detectar formato real del audio (Safari / Android / PC)
+    content_type = audio_file.content_type or ""
+
+    if "mp4" in content_type or "m4a" in content_type:
+        extension = ".mp4"
+    elif "webm" in content_type:
+        extension = ".webm"
+    else:
+        extension = ".mp4"  # fallback seguro para iPhone
 
     input_path = tempfile.NamedTemporaryFile(delete=False, suffix=extension).name
     wav_path = tempfile.NamedTemporaryFile(delete=False, suffix=".wav").name
@@ -277,7 +282,7 @@ def reconocer_voz():
         with open(input_path, "wb") as f:
             f.write(audio_content)
 
-        # Convertir a WAV según formato
+        # Convertir a WAV
         if extension == ".mp4":
             AudioSegment.from_file(input_path, format="mp4").export(wav_path, format="wav")
         else:
@@ -285,6 +290,7 @@ def reconocer_voz():
 
         # Leer audio para reconocimiento
         with sr.AudioFile(wav_path) as source:
+            recognizer.adjust_for_ambient_noise(source, duration=0.5)
             audio = recognizer.record(source)
 
         # Reconocimiento de voz con manejo de errores
@@ -301,7 +307,6 @@ def reconocer_voz():
         return jsonify({"error": f"No se pudo procesar la voz: {str(e)}"}), 400
 
     finally:
-        # Limpieza de archivos temporales
         if os.path.exists(input_path):
             os.remove(input_path)
         if os.path.exists(wav_path):
@@ -445,6 +450,7 @@ def oracion_vocal():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
