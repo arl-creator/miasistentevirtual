@@ -201,6 +201,14 @@
     </div>
     <audio id="audio-respuesta" playsinline></audio>
     <audio id="audio-repeticion" playsinline></audio>
+  <!-- INPUT OCULTO PARA IPHONE -->
+    <input
+      type="file"
+      id="audioIOS"
+      accept="audio/*"
+      capture
+      style="display:none"
+    />
 </main>
 <footer>
     <p>¡Habla y descubre!</p>
@@ -218,7 +226,8 @@ const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 const opcionesAudio = esMovil
   ? { mimeType: "audio/mp4" }
   : { mimeType: "audio/webm" };
-
+const audioIOS = document.getElementById("audioIOS");
+const esIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
   
 let palabrasPendientes = [];
 let palabrasCompletadas = 0;
@@ -247,20 +256,21 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
 });
 
 
-  botonMicrofono.addEventListener("pointerdown", () => {
+  botonMicrofono.addEventListener("click", () => {
+
+    // 🍎 iPhone → usar input file
+    if (esIOS) {
+      audioIOS.click();
+      return;
+    }
+  
+    // 🤖 Android / 💻 PC → MediaRecorder
     audioChunks = [];
     mediaRecorder.start();
-    respuestaElemento.innerText = "🎙️ Grabando... suelta para terminar";
+    respuestaElemento.innerText = "🎙️ Grabando...";
   });
 
-  botonMicrofono.addEventListener("pointerup", () => {
-    if (mediaRecorder.state === "recording") {
-      mediaRecorder.stop();
-      respuestaElemento.innerText = "⏳ Procesando...";
-    }
-  });
-});
-  
+
 function enviarAudio(audioBlob, nombreArchivo) {
     const formData = new FormData();
     formData.append("file", audioBlob, nombreArchivo);
@@ -580,10 +590,39 @@ btnOraciones.addEventListener("click", () => {
     iniciarEjercicioVocal(vocalAleatoria);
     respuestaElemento.innerText = `🧠 Preparando oración para la vocal: ${vocalAleatoria}...`;
 });
+  // 🍎 SOPORTE REAL PARA IPHONE
+audioIOS.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  respuestaElemento.innerText = "⏳ Procesando audio...";
+
+  const formData = new FormData();
+  formData.append("file", file, "audio.m4a");
+
+  try {
+    const res = await fetch("/voz", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (data.texto && data.texto.trim() !== "") {
+      respuestaElemento.innerText = "🧠 Entendí: " + data.texto;
+      enviarPregunta(data.texto);
+    } else {
+      respuestaElemento.innerText = "❌ No entendí lo que dijiste";
+    }
+  } catch (err) {
+    respuestaElemento.innerText = "❌ Error al enviar audio";
+  }
+});
 </script>
 </body>
 
 </html>
+
 
 
 
