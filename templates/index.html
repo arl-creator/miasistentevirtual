@@ -236,12 +236,16 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
 
   mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
-  mediaRecorder.onstop = () => {
-    const tipo = esMovil ? "audio/mp4" : "audio/webm";
-    const nombre = esMovil ? "pregunta.mp4" : "pregunta.webm";
-    const blob = new Blob(audioChunks, { type: tipo });
-    enviarAudio(blob, nombre);
-  };
+  mediaRecorder.addEventListener("stop", () => {
+  const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+    ? "audio/webm"
+    : "audio/mp4";
+
+  const blob = new Blob(audioChunks, { type: mimeType });
+  audioChunks = [];
+  enviarAudio(blob);
+});
+
 
   botonMicrofono.addEventListener("pointerdown", () => {
     audioChunks = [];
