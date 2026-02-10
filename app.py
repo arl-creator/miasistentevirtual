@@ -450,8 +450,12 @@ def oracion_vocal():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    # Primero genera los audios una sola vez
+    # generar_audios_pregrabados() 
+    
+    # Render asigna un puerto automáticamente en la variable PORT
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
 
 
 
