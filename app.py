@@ -255,52 +255,42 @@ def preguntar():
 def reconocer_voz():
     recognizer = sr.Recognizer()
 
-    audio_content = None
-    content_type = request.content_type or ""
+    # ✅ Validar que venga archivo
+    if "file" not in request.files:
+        return jsonify({"error": "No se recibió archivo de audio"}), 400
 
-    # 1️⃣ Intentar obtener audio como archivo (PC / Android)
-    if "file" in request.files:
-        audio_file = request.files["file"]
-        audio_content = audio_file.read()
-        content_type = audio_file.content_type or ""
-
-    # 2️⃣ Fallback Safari iPhone (audio como blob)
-    elif request.data:
-        audio_content = request.data
-
-    else:
-        return jsonify({"error": "No se recibió audio"}), 400
+    audio_file = request.files["file"]
+    audio_content = audio_file.read()
 
     if not audio_content:
         return jsonify({"error": "Audio vacío"}), 400
 
-    # Detectar formato real
-    if "mp4" in content_type or "m4a" in content_type:
-        extension = ".mp4"
-        audio_format = "mp4"
-    elif "webm" in content_type:
+    content_type = audio_file.content_type or ""
+
+    # Detectar formato
+    if "webm" in content_type:
         extension = ".webm"
         audio_format = "webm"
     else:
-        extension = ".mp4"
-        audio_format = "mp4"  # Safari fallback
+        extension = ".mp4"   # Safari / Android
+        audio_format = "mp4"
 
     input_path = tempfile.NamedTemporaryFile(delete=False, suffix=extension).name
     wav_path = tempfile.NamedTemporaryFile(delete=False, suffix=".wav").name
 
     try:
-        # Guardar audio
+        # Guardar audio original
         with open(input_path, "wb") as f:
             f.write(audio_content)
 
-        # Convertir a WAV
+        # Convertir a WAV (ffmpeg)
         AudioSegment.from_file(input_path, format=audio_format).export(
             wav_path, format="wav"
         )
 
         # Reconocimiento
         with sr.AudioFile(wav_path) as source:
-            recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            recognizer.adjust_for_ambient_noise(source, duration=0.2)
             audio = recognizer.record(source)
 
         try:
@@ -320,6 +310,7 @@ def reconocer_voz():
             os.remove(input_path)
         if os.path.exists(wav_path):
             os.remove(wav_path)
+
 
 
 
@@ -460,6 +451,7 @@ def oracion_vocal():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
