@@ -201,14 +201,6 @@
     </div>
     <audio id="audio-respuesta" playsinline></audio>
     <audio id="audio-repeticion" playsinline></audio>
-  <!-- INPUT OCULTO PARA IPHONE -->
-    <input
-      type="file"
-      id="audioIOS"
-      accept="audio/*"
-      capture
-      style="display:none"
-    />
 </main>
 <footer>
     <p>¡Habla y descubre!</p>
@@ -224,8 +216,8 @@ const btnFrases = document.getElementById("btn-frases");
 const btnOraciones = document.getElementById("btn-oraciones");
 const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 const opcionesAudio = { mimeType: "audio/webm" };
-const audioIOS = document.getElementById("audioIOS");
-const esIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+// const audioIOS = document.getElementById("audioIOS");
+// const esIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
   
 let palabrasPendientes = [];
 let palabrasCompletadas = 0;
@@ -233,7 +225,8 @@ let mediaRecorder;
 let mediaRecorderIntento;
 let audioChunks = [];
 let audioChunksIntento = [];
-
+  
+  
 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
   respuestaElemento.innerText = "❌ Tu navegador no permite usar el micrófono";
 }
@@ -257,25 +250,47 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
     enviarAudio(blob, nombre);
   };
 
-  botonMicrofono.addEventListener("click", () => {
+  // --- NUEVA LÓGICA DE GRABACIÓN DIRECTA ---
+botonMicrofono.addEventListener("click", async () => {
+  // Si ya estamos grabando, detenemos
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+    botonMicrofono.style.background = "var(--primary)"; // Vuelve a color amarillo
+    return;
+  }
 
-    // 🍎 iPhone → input file
-    if (esIOS) {
-      audioIOS.click();
-      return;
-    }
-
-    // 🤖 Android / 💻 PC
+  // Si no estamos grabando, iniciamos
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+    // Detectamos si es iPhone para el formato de audio
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const mimeType = isSafari ? 'audio/mp4' : 'audio/webm';
+    
+    mediaRecorder = new MediaRecorder(stream, { mimeType });
     audioChunks = [];
-    mediaRecorder.start();
-    respuestaElemento.innerText = "🎙️ Grabando...";
-  });
-});
 
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: mimeType });
+      const ext = isSafari ? 'mp4' : 'webm';
+      enviarAudio(blob, `grabacion.${ext}`);
+    };
+
+    mediaRecorder.start();
+    botonMicrofono.style.background = "red"; // Cambia a rojo grabando
+    respuestaElemento.innerText = "🎙️ Escuchando... Presiona de nuevo para parar";
+  } catch (err) {
+    respuestaElemento.innerText = "❌ Permite el uso del micrófono";
+  }
+});
 
 function enviarAudio(audioBlob, nombreArchivo) {
     const formData = new FormData();
     formData.append("file", audioBlob, nombreArchivo);
+
+    respuestaElemento.innerText = "⏳ Procesando voz...";
 
     fetch("/voz", {
         method: "POST",
@@ -283,16 +298,24 @@ function enviarAudio(audioBlob, nombreArchivo) {
     })
     .then(res => res.json())
     .then(data => {
-        if (data.texto) {
+        if (data.texto && data.texto.trim() !== "") {
             respuestaElemento.innerText = "🧠 Entendí: " + data.texto;
-            enviarPregunta(data.texto); // 🔥 aquí ya fluye todo
+            
+            // 🔥 AQUÍ SE UNE LA VOZ CON EL EJERCICIO
+            if (btnGrabarIntento.style.display === "block") {
+                // Si el botón de repetir está visible, estamos en un ejercicio
+                validarIntento(btnGrabarIntento.dataset.respuesta || btnGrabarIntento.dataset.oracion, data.texto);
+            } else {
+                // Si no, es una pregunta normal
+                enviarPregunta(data.texto);
+            }
         } else {
-            respuestaElemento.innerText = "❌ No entendí lo que dijiste";
+            respuestaElemento.innerText = "❌ No entendí, intenta de nuevo";
         }
     })
     .catch(err => {
         console.error(err);
-        respuestaElemento.innerText = "❌ Error al procesar audio";
+        respuestaElemento.innerText = "❌ Error en el servidor";
     });
 }
 
@@ -622,6 +645,7 @@ audioIOS.addEventListener("change", async (e) => {
 </body>
 
 </html>
+
 
 
 
