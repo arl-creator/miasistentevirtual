@@ -253,6 +253,9 @@ def preguntar():
 
 @app.route("/voz", methods=["POST"])
 def reconocer_voz():
+    print("FILES:", request.files)
+    print("CONTENT TYPE:", request.content_type)
+
     recognizer = sr.Recognizer()
 
     # ✅ Validar que venga archivo
@@ -451,6 +454,7 @@ def oracion_vocal():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
