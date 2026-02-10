@@ -151,8 +151,6 @@ def generar_audios_pregrabados():
             tts = gTTS(datos["texto"], lang="es") 
             os.makedirs(os.path.dirname(ruta_audio), exist_ok=True) 
             tts.save(ruta_audio)
-
-#generar_audios_pregrabados()
             
 @app.route("/") 
 def index(): 
@@ -454,6 +452,7 @@ def oracion_vocal():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
