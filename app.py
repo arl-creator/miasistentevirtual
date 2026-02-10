@@ -94,23 +94,31 @@ def preguntar():
 @app.route("/voz", methods=["POST"])
 def reconocer_voz():
     recognizer = sr.Recognizer()
-    if "file" not in request.files: return jsonify({"error": "No file"}), 400
+    if "file" not in request.files: 
+        return jsonify({"error": "No file"}), 400
     
     audio_file = request.files["file"]
-    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp_webm:
-        audio_file.save(tmp_webm.name)
-        tmp_wav = tmp_webm.name.replace(".webm", ".wav")
+    # Detectamos la extensión real que envía el navegador
+    extension = ".webm" if "webm" in audio_file.content_type else ".mp4"
+    
+    with tempfile.NamedTemporaryFile(suffix=extension, delete=False) as tmp_input:
+        audio_file.save(tmp_input.name)
+        tmp_wav = tmp_input.name.replace(extension, ".wav")
         try:
-            # Esta línea requiere FFmpeg instalado en el servidor
-            AudioSegment.from_file(tmp_webm.name).export(tmp_wav, format="wav")
+            # Forzamos la conversión a WAV para que Google lo entienda siempre
+            audio_segment = AudioSegment.from_file(tmp_input.name)
+            audio_segment.export(tmp_wav, format="wav")
+            
             with sr.AudioFile(tmp_wav) as source:
                 audio_data = recognizer.record(source)
-            texto = recognizer.recognize_google(audio_data, language="es-ES")
-            return jsonify({"texto": texto})
-        except:
-            return jsonify({"texto": ""})
+                # Usamos un timeout para que no se quede colgado
+                texto = recognizer.recognize_google(audio_data, language="es-ES")
+                return jsonify({"texto": texto.strip()})
+        except Exception as e:
+            print(f"Error reconocimiento: {e}")
+            return jsonify({"texto": ""}) # Si no entiende nada, devuelve vacío
         finally:
-            if os.path.exists(tmp_webm.name): os.remove(tmp_webm.name)
+            if os.path.exists(tmp_input.name): os.remove(tmp_input.name)
             if os.path.exists(tmp_wav): os.remove(tmp_wav)
 
 @app.route("/validar", methods=["POST"])
@@ -154,3 +162,4 @@ if __name__ == "__main__":
     generar_audios_pregrabados()
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
