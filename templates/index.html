@@ -257,19 +257,18 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
 
   botonMicrofono.addEventListener("click", () => {
 
-    // 🍎 iPhone → usar input file
+    // 🍎 iPhone
     if (esIOS) {
       audioIOS.click();
       return;
     }
 
-    // 🤖 Android / 💻 PC → MediaRecorder
+    // 🤖 Android / 💻 PC
     audioChunks = [];
     mediaRecorder.start();
     respuestaElemento.innerText = "🎙️ Grabando...";
   });
-}); // ✅ cierre addEventListener
-}); // ✅ cierre getUserMedia
+});
 
 
 function enviarAudio(audioBlob, nombreArchivo) {
@@ -623,6 +622,7 @@ audioIOS.addEventListener("change", async (e) => {
 </body>
 
 </html>
+
 
 
 
