@@ -1,13 +1,12 @@
 flask
 python-dotenv
 openai==0.28.0
-speechrecognition
+SpeechRecognition
 gTTS
 pydub
 gunicorn
 requests
 ffmpeg-python
-
 
 
 
