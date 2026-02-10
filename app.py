@@ -7,7 +7,7 @@ from gtts import gTTS
 import uuid
 from pydub import AudioSegment
 import tempfile
-import difflib
+#import difflib
 import json
 
 
@@ -454,6 +454,7 @@ def oracion_vocal():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
