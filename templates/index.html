@@ -223,9 +223,7 @@ const contenedorEjercicios = document.getElementById("contenedor-ejercicios");
 const btnFrases = document.getElementById("btn-frases");
 const btnOraciones = document.getElementById("btn-oraciones");
 const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-const opcionesAudio = esMovil
-  ? { mimeType: "audio/mp4" }
-  : { mimeType: "audio/webm" };
+const opcionesAudio = { mimeType: "audio/webm" };
 const audioIOS = document.getElementById("audioIOS");
 const esIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
   
@@ -241,23 +239,27 @@ if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
 }
 
 navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+
+  // ✅ AQUÍ SÍ se crea el MediaRecorder
   mediaRecorder = new MediaRecorder(stream, opcionesAudio);
 
-  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+  mediaRecorder.ondataavailable = e => {
+    if (e.data.size > 0) audioChunks.push(e.data);
+  };
 
-  mediaRecorder.addEventListener("stop", () => {
-    const mimeType = MediaRecorder.isTypeSupported("audio/webm")
-      ? "audio/webm"
-      : "audio/mp4";
+  mediaRecorder.onstop = () => {
+    const esSafari = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const mimeType = esSafari ? "audio/mp4" : "audio/webm";
+    const nombre = esSafari ? "audio.mp4" : "audio.webm";
 
     const blob = new Blob(audioChunks, { type: mimeType });
     audioChunks = [];
-    enviarAudio(blob);
-  });
+    enviarAudio(blob, nombre);
+  };
 
   botonMicrofono.addEventListener("click", () => {
 
-    // 🍎 iPhone
+    // 🍎 iPhone → input file
     if (esIOS) {
       audioIOS.click();
       return;
@@ -622,6 +624,7 @@ audioIOS.addEventListener("change", async (e) => {
 </body>
 
 </html>
+
 
 
 
