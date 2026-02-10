@@ -498,8 +498,15 @@ function enviarIntento(blob, nombre) {
     });
 }
 
-// --- VALIDACIÓN DEL INTENTO ---
+// --- VALIDACIÓN DEL INTENTO (CORREGIDA) ---
 function validarIntento(respuestaCorrecta, intentoNiño) {
+    // Si el intento llegó vacío desde el servidor, ni siquiera intentamos validar
+    if (!intentoNiño || intentoNiño.trim() === "") {
+        mensajeValidacion.innerText = "🎤 No te escuché bien, ¡inténtalo de nuevo!";
+        btnGrabarIntento.style.display = "block";
+        return;
+    }
+
     fetch("/validar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -507,22 +514,27 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
     })
     .then(res => res.json())
     .then(data => {
-
+        // Mostramos lo que el niño dijo para que el padre vea qué entendió el sistema
         const mensajeFinal = data.mensaje + ` (Tú dijiste: "${intentoNiño}")`;
         mensajeValidacion.innerText = mensajeFinal;
         btnGrabarIntento.style.display = "none";
 
-        const esCorrecto =
-            data.correcto === true ||
-            data.mensaje.includes("Muy bien") ||
-            data.mensaje.includes("Correcto") ||
-            data.mensaje.includes("Excelente");
+        // Lógica de éxito flexible: Si la IA dice que es correcto o el mensaje es positivo
+        const esCorrecto = 
+            data.correcto === true || 
+            data.mensaje.toLowerCase().includes("muy bien") || 
+            data.mensaje.toLowerCase().includes("perfecto") ||
+            data.mensaje.toLowerCase().includes("excelente") ||
+            data.mensaje.toLowerCase().includes("lograste");
 
-        // 🔊 1. GENERAMOS Y REPRODUCIMOS EL AUDIO
+        // Reproducimos la respuesta del asistente (audio_url ya viene en /validar usualmente)
+        // Pero usamos tu ruta /tts como respaldo si no viniera
+        const textoAHablar = data.mensaje;
+        
         fetch("/tts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ texto: data.mensaje })
+            body: JSON.stringify({ texto: textoAHablar })
         })
         .then(res => res.json())
         .then(dataTTS => {
@@ -531,99 +543,86 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
                 return;
             }
 
-            const audioMensaje = new Audio(
-                dataTTS.audio_url + "?t=" + new Date().getTime()
-            );
+            const audioMensaje = new Audio(dataTTS.audio_url + "?t=" + new Date().getTime());
 
-            // ✅ 2. SOLO CUANDO TERMINA DE HABLAR → AVANZAMOS
             audioMensaje.onended = () => {
+                // Si es un ejercicio de secuencia de palabras (A-E-I-O-U)
                 if (!btnGrabarIntento.dataset.oracion) {
                     if (esCorrecto) {
-                        palabrasPendientes.shift();
+                        palabrasPendientes.shift(); // Quitamos la palabra lograda
                         palabrasCompletadas++;
-                        reproducirSiguientePalabra();
+                        reproducirSiguientePalabra(); // <--- AVANZA AL SIGUIENTE
                     } else {
-                        btnGrabarIntento.style.display = "block";
+                        btnGrabarIntento.style.display = "block"; // Reintentar la misma
                     }
                 } else {
+                    // Si es el ejercicio de una sola oración
                     if (esCorrecto) {
-                        contenedorEjercicios.style.display = "block";
+                        // Volver al menú de ejercicios después de un éxito
+                        setTimeout(() => {
+                            contenedorEjercicios.style.display = "block";
+                            mensajeValidacion.innerText = "¡Lo lograste! Elige otro ejercicio.";
+                        }, 1000);
                     } else {
                         btnGrabarIntento.style.display = "block";
                     }
                 }
             };
 
-            audioMensaje.play().catch(() => {
+            audioMensaje.play().catch(err => {
+                console.log("Error audio:", err);
                 btnGrabarIntento.style.display = "block";
             });
         });
-
     })
-    .catch(() => {
-        mensajeValidacion.innerText = "❌ Ocurrió un error al validar. Intenta de nuevo.";
+    .catch(err => {
+        console.error(err);
+        mensajeValidacion.innerText = "❌ Error al validar. Revisa tu conexión.";
         btnGrabarIntento.style.display = "block";
     });
 }
 
-
-// --- BOTONES DE EJERCICIOS ---
-btnFrases.addEventListener("click", async () => {
-    respuestaElemento.innerText = "⏳ Pidiéndole 5 palabras (A, E, I, O, U) al asistente...";
-    try {
-        let res = await fetch("/ejercicios_frases");
-        if (!res.ok) throw new Error("Error de red al cargar palabras.");
-        let data = await res.json();
-        if (data.error || !data.palabras || data.palabras.length === 0) {
-            respuestaElemento.innerText = "❌ Error al cargar palabras: " + (data.error || "No se recibieron palabras. Verifica el backend.");
-            contenedorEjercicios.style.display = "block";
-            return;
-        }
-        iniciarSecuenciaPalabras(data.palabras);
-    } catch (error) {
-        respuestaElemento.innerText = `❌ Error al iniciar el ejercicio de palabras: ${error.message}. Asegúrate que app.py esté funcionando.`;
-        contenedorEjercicios.style.display = "block";
-    }
-});
-
-btnOraciones.addEventListener("click", () => {
-    const vocales = ["A", "E", "I", "O", "U"];
-    const vocalAleatoria = vocales[Math.floor(Math.random() * vocales.length)];
-    iniciarEjercicioVocal(vocalAleatoria);
-    respuestaElemento.innerText = `🧠 Preparando oración para la vocal: ${vocalAleatoria}...`;
-});
-  // 🍎 SOPORTE REAL PARA IPHONE
+// --- SOPORTE MEJORADO PARA IPHONE (INPUT FILE) ---
 audioIOS.addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+    const file = e.target.files[0];
+    if (!file) return;
 
-  respuestaElemento.innerText = "⏳ Procesando audio...";
+    respuestaElemento.innerText = "⏳ Procesando tu voz...";
 
-  const formData = new FormData();
-  formData.append("file", file, "audio.m4a");
+    const formData = new FormData();
+    // Importante: El iPhone manda .mov o .m4a, el backend debe saber procesarlo
+    formData.append("file", file);
 
-  try {
-    const res = await fetch("/voz", {
-      method: "POST",
-      body: formData
-    });
+    try {
+        const res = await fetch("/voz", {
+            method: "POST",
+            body: formData
+        });
 
-    const data = await res.json();
+        const data = await res.json();
 
-    if (data.texto && data.texto.trim() !== "") {
-      respuestaElemento.innerText = "🧠 Entendí: " + data.texto;
-      enviarPregunta(data.texto);
-    } else {
-      respuestaElemento.innerText = "❌ No entendí lo que dijiste";
+        if (data.texto && data.texto.trim() !== "") {
+            respuestaElemento.innerText = "🎤 Entendí: " + data.texto;
+            
+            // Si estamos en un ejercicio, validamos. Si no, preguntamos normal.
+            if (contenedorValidacion.style.display === "block") {
+                const palabraObjetivo = btnGrabarIntento.dataset.palabra || "";
+                validarIntento(palabraObjetivo, data.texto);
+            } else {
+                enviarPregunta(data.texto);
+            }
+        } else {
+            respuestaElemento.innerText = "❌ No pude entenderte, ¿puedes repetir?";
+        }
+    } catch (err) {
+        respuestaElemento.innerText = "❌ Error al conectar con el servidor.";
     }
-  } catch (err) {
-    respuestaElemento.innerText = "❌ Error al enviar audio";
-  }
 });
 </script>
 </body>
 
 </html>
+
 
 
 
