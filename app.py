@@ -94,32 +94,32 @@ def preguntar():
 @app.route("/voz", methods=["POST"])
 def reconocer_voz():
     recognizer = sr.Recognizer()
-    if "file" not in request.files: 
-        return jsonify({"error": "No file"}), 400
+    audio_file = request.files.get("file")
     
-    audio_file = request.files["file"]
-    # Detectamos la extensión real que envía el navegador
-    extension = ".webm" if "webm" in audio_file.content_type else ".mp4"
-    
-    with tempfile.NamedTemporaryFile(suffix=extension, delete=False) as tmp_input:
+    if not audio_file:
+        return jsonify({"error": "No audio"}), 400
+
+    # Guardar temporalmente lo que venga (m4a, mov, webm...)
+    with tempfile.NamedTemporaryFile(delete=False) as tmp_input:
         audio_file.save(tmp_input.name)
-        tmp_wav = tmp_input.name.replace(extension, ".wav")
-        try:
-            # Forzamos la conversión a WAV para que Google lo entienda siempre
-            audio_segment = AudioSegment.from_file(tmp_input.name)
-            audio_segment.export(tmp_wav, format="wav")
-            
-            with sr.AudioFile(tmp_wav) as source:
-                audio_data = recognizer.record(source)
-                # Usamos un timeout para que no se quede colgado
-                texto = recognizer.recognize_google(audio_data, language="es-ES")
-                return jsonify({"texto": texto.strip()})
-        except Exception as e:
-            print(f"Error reconocimiento: {e}")
-            return jsonify({"texto": ""}) # Si no entiende nada, devuelve vacío
-        finally:
-            if os.path.exists(tmp_input.name): os.remove(tmp_input.name)
-            if os.path.exists(tmp_wav): os.remove(tmp_wav)
+        
+    try:
+        # CONVERSIÓN UNIVERSAL CON PYDUB
+        # Esto convierte el audio de iPhone a WAV (que Google sí entiende)
+        wav_path = tmp_input.name + ".wav"
+        AudioSegment.from_file(tmp_input.name).export(wav_path, format="wav")
+        
+        with sr.AudioFile(wav_path) as source:
+            audio_data = recognizer.record(source)
+            texto = recognizer.recognize_google(audio_data, language="es-ES")
+            return jsonify({"texto": texto})
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"texto": ""}) # Si falla el reconocimiento
+    finally:
+        # Limpieza de archivos temporales
+        if os.path.exists(tmp_input.name): os.remove(tmp_input.name)
+        if 'wav_path' in locals() and os.path.exists(wav_path): os.remove(wav_path)
 
 @app.route("/validar", methods=["POST"])
 def validar():
@@ -162,4 +162,5 @@ if __name__ == "__main__":
     generar_audios_pregrabados()
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
