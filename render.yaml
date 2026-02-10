@@ -2,8 +2,10 @@ services:
   - type: web
     name: asistente-ninos
     env: python
+    # Aquí instalamos FFmpeg de forma manual ya que apt-get no funciona directo
     buildCommand: |
-      apt-get update
-      apt-get install -y ffmpeg
       pip install -r requirements.txt
-    startCommand: python app.py
+    startCommand: gunicorn app:app
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        sync: false # Deberás poner el valor manualmente en el panel de Render
