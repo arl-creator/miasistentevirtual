@@ -15,8 +15,8 @@ openai.api_key = os.environ.get("DEEPSEEK_API_KEY")
 openai.api_base = "https://api.deepseek.com/v1"
 
 app = Flask(__name__)
+os.makedirs("static/audio", exist_ok=True)
 
-# Asegurar que la carpeta de audios exista
 AUDIO_DIR = os.path.join("static", "audio")
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
@@ -94,57 +94,68 @@ def preguntar():
 @app.route("/voz", methods=["POST"])
 def reconocer_voz():
     recognizer = sr.Recognizer()
-    audio_file = request.files.get("file")
+    if "file" not in request.files:
+        return jsonify({"texto": ""}), 400
     
-    if not audio_file:
-        return jsonify({"error": "No audio"}), 400
-
-    # Guardar temporalmente lo que venga (m4a, mov, webm...)
-    with tempfile.NamedTemporaryFile(delete=False) as tmp_input:
-        audio_file.save(tmp_input.name)
-        
-    try:
-        # CONVERSIÓN UNIVERSAL CON PYDUB
-        # Esto convierte el audio de iPhone a WAV (que Google sí entiende)
-        wav_path = tmp_input.name + ".wav"
-        AudioSegment.from_file(tmp_input.name).export(wav_path, format="wav")
-        
-        with sr.AudioFile(wav_path) as source:
-            audio_data = recognizer.record(source)
-            texto = recognizer.recognize_google(audio_data, language="es-ES")
+    audio_file = request.files["file"]
+    ext = ".webm" if "webm" in audio_file.content_type else ".mp4"
+    
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp_in:
+        audio_file.save(tmp_in.name)
+        tmp_wav = tmp_in.name + ".wav"
+        try:
+            # Conversión necesaria para iPhone y navegadores
+            AudioSegment.from_file(tmp_in.name).export(tmp_wav, format="wav")
+            with sr.AudioFile(tmp_wav) as source:
+                audio = recognizer.record(source)
+            texto = recognizer.recognize_google(audio, language="es-ES")
             return jsonify({"texto": texto})
-    except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({"texto": ""}) # Si falla el reconocimiento
-    finally:
-        # Limpieza de archivos temporales
-        if os.path.exists(tmp_input.name): os.remove(tmp_input.name)
-        if 'wav_path' in locals() and os.path.exists(wav_path): os.remove(wav_path)
-
+        except Exception as e:
+            print(f"Error Voz: {e}")
+            return jsonify({"texto": ""})
+        finally:
+            if os.path.exists(tmp_in.name): os.remove(tmp_in.name)
+            if os.path.exists(tmp_wav): os.remove(tmp_wav)
+                
 @app.route("/validar", methods=["POST"])
 def validar():
     data = request.json
     intento = data.get("intento", "").lower()
     correcta = data.get("respuesta", "").lower()
     
-    prompt_fonia = "Eres un foniatra. Si el niño dijo algo parecido a la respuesta, felicítalo con 'Muy bien'. Si no, anímalo."
-    mensaje = obtener_respuesta_deepseek(f"Correcta: {correcta}. Niño dijo: {intento}", prompt_fonia, 0.4)
-    
+    prompt = "Eres un foniatra para niños. Si el niño dijo algo parecido a la respuesta, responde 'Muy bien'. Si no, anímalo."
+    try:
+        res = openai.ChatCompletion.create(
+            model="deepseek-chat",
+            messages=[{"role": "system", "content": prompt}, {"role": "user", "content": f"Correcta: {correcta}. Niño dijo: {intento}"}],
+            temperature=0.3
+        )
+        mensaje = res['choices'][0]['message']['content'].strip()
+    except:
+        mensaje = "¡Muy bien hecho!"
+
     audio_name = f"val_{uuid.uuid4()}.mp3"
-    gTTS(mensaje, lang="es").save(os.path.join(AUDIO_DIR, audio_name))
+    gTTS(mensaje, lang="es").save(os.path.join("static/audio", audio_name))
     
-    es_correcto = "muy bien" in mensaje.lower() or "perfecto" in mensaje.lower()
-    return jsonify({"mensaje": mensaje, "audio_url": f"/static/audio/{audio_name}", "correcto": es_correcto, "avanzar": es_correcto})
+    # Lógica de éxito para el frontend
+    exito = any(palabra in mensaje.lower() for palabra in ["muy bien", "perfecto", "excelente", "correcto"])
+    return jsonify({"mensaje": mensaje, "audio_url": f"/static/audio/{audio_name}", "correcto": exito})
 
 @app.route("/ejercicios_frases")
 def ejercicios_frases():
-    sys = "Responde SOLO un JSON: {'palabras': ['pal1', 'pal2', 'pal3', 'pal4', 'pal5']}"
-    res = obtener_respuesta_deepseek("5 palabras que empiecen con A, E, I, O, U", sys)
+    # Fallback por si la IA falla
+    default = {"palabras": ["Avión", "Elefante", "Isla", "Oso", "Uva"]}
     try:
-        if "```json" in res: res = res.split("```json")[1].split("```")[0].strip()
-        return jsonify(json.loads(res))
+        res = openai.ChatCompletion.create(
+            model="deepseek-chat",
+            messages=[{"role": "system", "content": "Responde SOLO JSON: {'palabras':[]}"}, {"role": "user", "content": "5 palabras con A,E,I,O,U"}],
+            temperature=0.7
+        )
+        cont = res['choices'][0]['message']['content']
+        if "```json" in cont: cont = cont.split("```json")[1].split("```")[0]
+        return jsonify(json.loads(cont))
     except:
-        return jsonify({"palabras": ["Avión", "Elefante", "Isla", "Oso", "Uva"]})
+        return jsonify(default)
 
 @app.route("/oracion_vocal", methods=["POST"])
 def oracion_vocal():
@@ -159,8 +170,8 @@ def oracion_vocal():
 
 # 5. INICIO DE LA APP
 if __name__ == "__main__":
-    generar_audios_pregrabados()
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
