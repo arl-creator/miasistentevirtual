@@ -246,15 +246,14 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
   mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
   mediaRecorder.addEventListener("stop", () => {
-  const mimeType = MediaRecorder.isTypeSupported("audio/webm")
-    ? "audio/webm"
-    : "audio/mp4";
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+      ? "audio/webm"
+      : "audio/mp4";
 
-  const blob = new Blob(audioChunks, { type: mimeType });
-  audioChunks = [];
-  enviarAudio(blob);
-});
-
+    const blob = new Blob(audioChunks, { type: mimeType });
+    audioChunks = [];
+    enviarAudio(blob);
+  });
 
   botonMicrofono.addEventListener("click", () => {
 
@@ -263,12 +262,14 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
       audioIOS.click();
       return;
     }
-  
+
     // 🤖 Android / 💻 PC → MediaRecorder
     audioChunks = [];
     mediaRecorder.start();
     respuestaElemento.innerText = "🎙️ Grabando...";
   });
+}); // ✅ cierre addEventListener
+}); // ✅ cierre getUserMedia
 
 
 function enviarAudio(audioBlob, nombreArchivo) {
@@ -622,6 +623,7 @@ audioIOS.addEventListener("change", async (e) => {
 </body>
 
 </html>
+
 
 
 
