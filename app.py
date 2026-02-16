@@ -167,11 +167,33 @@ def oracion_vocal():
         return jsonify(json.loads(res))
     except:
         return jsonify({"oracion": f"El {vocal}migo es bueno.", "palabra_clave": "Amigo"})
+        
+@app.route("/tts", methods=["POST"])
+def tts():
+    data = request.json
+    texto = data.get("texto", "")
+
+    if not texto:
+        return jsonify({"error": "Texto vacío"}), 400
+
+    try:
+        nombre_audio = f"tts_{uuid.uuid4()}.mp3"
+        ruta_audio = os.path.join(AUDIO_DIR, nombre_audio)
+
+        tts = gTTS(texto, lang="es")
+        tts.save(ruta_audio)
+
+        return jsonify({"audio_url": f"/static/audio/{nombre_audio}"})
+    except Exception as e:
+        print("Error TTS:", e)
+        return jsonify({"error": "Error generando audio"}), 500
+
 
 # 5. INICIO DE LA APP
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
