@@ -505,10 +505,15 @@ function enviarIntento(blob, nombre) {
     .then(res => res.json())
     .then(data => {
       if (data.texto && data.texto.trim() !== "") {
-        validarIntento(
-          btnGrabarIntento.dataset.respuesta,
-          data.texto
+        const respuestaCorrecta =
+          btnGrabarIntento.dataset.respuesta ||
+          btnGrabarIntento.dataset.oracion;
+        
+          validarIntento(
+            respuestaCorrecta,
+            data.texto
         );
+
       } else {
         mensajeValidacion.innerText = "👂 No te escuché bien, intenta otra vez";
         btnGrabarIntento.style.display = "block";
@@ -607,6 +612,7 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
 </body>
 
 </html>
+
 
 
 
