@@ -456,16 +456,30 @@ btnGrabarIntento.addEventListener("pointerdown", () => {
 
     mediaRecorderIntento.ondataavailable = e => audioChunksIntento.push(e.data);
 
-    mediaRecorderIntento.onstop = () => {
+    mediaRecorderIntento.onstop = async () => {
+
+      if (audioChunksIntento.length === 0) {
+        console.log("Audio vacío");
+        return;
+      }
+    
+      await new Promise(resolve => setTimeout(resolve, 200));
+    
       const blob = new Blob(audioChunksIntento, { type: mimeTypeIntento });
+    
+      if (blob.size === 0) {
+        console.log("Blob vacío");
+        return;
+      }
+    
       const nombre = isSafari ? "intento.mp4" : "intento.webm";
       enviarIntento(blob, nombre);
     };
-
-    mediaRecorderIntento.start();
-    mensajeValidacion.innerText = "🎙️ Habla ahora...";
-  });
-});
+    
+        mediaRecorderIntento.start();
+        mensajeValidacion.innerText = "🎙️ Habla ahora...";
+      });
+    });
 
 btnGrabarIntento.addEventListener("pointerup", () => {
   if (mediaRecorderIntento?.state === "recording") {
@@ -593,6 +607,7 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
 </body>
 
 </html>
+
 
 
 
