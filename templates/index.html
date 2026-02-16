@@ -231,24 +231,6 @@ if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
   respuestaElemento.innerText = "❌ Tu navegador no permite usar el micrófono";
 }
 
-navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-
-  // ✅ AQUÍ SÍ se crea el MediaRecorder
-  mediaRecorder = new MediaRecorder(stream, opcionesAudio);
-
-  mediaRecorder.ondataavailable = e => {
-    if (e.data.size > 0) audioChunks.push(e.data);
-  };
-
-  mediaRecorder.onstop = () => {
-    const esSafari = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const mimeType = esSafari ? "audio/mp4" : "audio/webm";
-    const nombre = esSafari ? "audio.mp4" : "audio.webm";
-
-    const blob = new Blob(audioChunks, { type: mimeType });
-    audioChunks = [];
-    enviarAudio(blob, nombre);
-  };
 
   // --- NUEVA LÓGICA DE GRABACIÓN DIRECTA ---
 botonMicrofono.addEventListener("click", async () => {
@@ -466,14 +448,17 @@ btnGrabarIntento.addEventListener("pointerdown", () => {
   audioChunksIntento = [];
 
   navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-    mediaRecorderIntento = new MediaRecorder(stream, opcionesAudio);
+
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const mimeTypeIntento = isSafari ? "audio/mp4" : "audio/webm";
+
+    mediaRecorderIntento = new MediaRecorder(stream, { mimeType: mimeTypeIntento });
 
     mediaRecorderIntento.ondataavailable = e => audioChunksIntento.push(e.data);
 
     mediaRecorderIntento.onstop = () => {
-      const tipo = esMovil ? "audio/mp4" : "audio/webm";
-      const nombre = esMovil ? "intento.mp4" : "intento.webm";
-      const blob = new Blob(audioChunksIntento, { type: tipo });
+      const blob = new Blob(audioChunksIntento, { type: mimeTypeIntento });
+      const nombre = isSafari ? "intento.mp4" : "intento.webm";
       enviarIntento(blob, nombre);
     };
 
@@ -604,47 +589,11 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
         btnGrabarIntento.style.display = "block";
     });
 }
-
-// --- SOPORTE MEJORADO PARA IPHONE (INPUT FILE) ---
-audioIOS.addEventListener("change", async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    respuestaElemento.innerText = "⏳ Procesando tu voz...";
-
-    const formData = new FormData();
-    // Importante: El iPhone manda .mov o .m4a, el backend debe saber procesarlo
-    formData.append("file", file);
-
-    try {
-        const res = await fetch("/voz", {
-            method: "POST",
-            body: formData
-        });
-
-        const data = await res.json();
-
-        if (data.texto && data.texto.trim() !== "") {
-            respuestaElemento.innerText = "🎤 Entendí: " + data.texto;
-            
-            // Si estamos en un ejercicio, validamos. Si no, preguntamos normal.
-            if (contenedorValidacion.style.display === "block") {
-                const palabraObjetivo = btnGrabarIntento.dataset.palabra || "";
-                validarIntento(palabraObjetivo, data.texto);
-            } else {
-                enviarPregunta(data.texto);
-            }
-        } else {
-            respuestaElemento.innerText = "❌ No pude entenderte, ¿puedes repetir?";
-        }
-    } catch (err) {
-        respuestaElemento.innerText = "❌ Error al conectar con el servidor.";
-    }
-});
 </script>
 </body>
 
 </html>
+
 
 
 
