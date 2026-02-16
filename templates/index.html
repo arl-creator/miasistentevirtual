@@ -476,7 +476,7 @@ btnGrabarIntento.addEventListener("pointerdown", () => {
       enviarIntento(blob, nombre);
     };
     
-        mediaRecorderIntento.start(1000);
+        mediaRecorderIntento.start();
         mensajeValidacion.innerText = "🎙️ Habla ahora...";
       });
     });
@@ -612,6 +612,7 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
 </body>
 
 </html>
+
 
 
 
