@@ -146,52 +146,46 @@ function procesarGrabacionIntento() {
 }
 
 @app.route("/voz", methods=["POST"])
-def voz():
+def reconocer_voz():
+    if "file" not in request.files:
+        return jsonify({"error": "No se envió ningún archivo de audio."}), 400
+
+    audio_file = request.files["file"]
+
+    import tempfile
+    import os
+    from pydub import AudioSegment
+    import speech_recognition as sr
+
+    recognizer = sr.Recognizer()
+
     try:
-        if "file" not in request.files:
-            return jsonify({"error": "No se recibió audio"})
+        # Guardar el archivo original temporalmente
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_input:
+            audio_file.save(tmp_input)
+            tmp_input_path = tmp_input.name
 
-        audio_file = request.files["file"]
+        # Convertir a WAV
+        tmp_wav_path = tmp_input_path + ".wav"
+        audio = AudioSegment.from_file(tmp_input_path)
+        audio.export(tmp_wav_path, format="wav")
 
-        import tempfile
-        from pydub import AudioSegment
-        import speech_recognition as sr
-        import os
+        # Reconocimiento
+        with sr.AudioFile(tmp_wav_path) as source:
+            audio_data = recognizer.record(source)
+            texto = recognizer.recognize_google(audio_data, language="es-MX")
 
-        # Crear archivo temporal WAV
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_wav:
-            temp_wav_path = temp_wav.name
-
-        try:
-            # Convertir cualquier formato (webm, mp4, m4a, etc) a WAV
-            audio = AudioSegment.from_file(audio_file)
-            audio.export(temp_wav_path, format="wav")
-        except Exception as e:
-            print("Error convirtiendo audio:", e)
-            return jsonify({"error": "Error procesando el audio"})
-
-        recognizer = sr.Recognizer()
-
-        try:
-            with sr.AudioFile(temp_wav_path) as source:
-                audio_data = recognizer.record(source)
-                texto = recognizer.recognize_google(audio_data, language="es-MX")
-        except sr.UnknownValueError:
-            print("No se entendió el audio")
-            return jsonify({"error": "No se entendió el audio"})
-        except Exception as e:
-            print("Error reconocimiento:", e)
-            return jsonify({"error": "Error al reconocer el audio"})
-        finally:
-            if os.path.exists(temp_wav_path):
-                os.remove(temp_wav_path)
-
-        print("Texto reconocido:", texto)
         return jsonify({"texto": texto})
 
+    except sr.UnknownValueError:
+        return jsonify({"error": "No se entendió el audio"}), 400
     except Exception as e:
-        print("Error general:", e)
-        return jsonify({"error": "Ocurrió un error"})
+        return jsonify({"error": f"No se pudo procesar el audio: {str(e)}"}), 400
+    finally:
+        # Limpiar archivos temporales
+        for f in [tmp_input_path, tmp_wav_path]:
+            if os.path.exists(f):
+                os.remove(f)
 
 
 @app.route("/validar", methods=["POST"])
@@ -361,6 +355,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
