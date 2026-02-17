@@ -91,32 +91,48 @@ def preguntar():
 
     return jsonify({"respuesta": res_texto, "audio_url": f"/static/audio/{res_name}", "repetir_url": f"/static/audio/{rep_name}", "imagenes": []})
 
+from pydub import AudioSegment
+import tempfile
+import os
+
 @app.route("/voz", methods=["POST"])
-def reconocer_voz():
+def voz():
     recognizer = sr.Recognizer()
-    if "file" not in request.files:
-        return jsonify({"texto": ""}), 400
-    
-    audio_file = request.files["file"]
-    ext = ".webm" if "webm" in audio_file.content_type else ".mp4"
-    
-    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp_in:
-        audio_file.save(tmp_in.name)
-        tmp_wav = tmp_in.name + ".wav"
+
+    try:
+        file = request.files["file"]
+
+        # Guardar archivo temporal
+        with tempfile.NamedTemporaryFile(delete=False) as temp_input:
+            file.save(temp_input.name)
+
+        # Convertir SIEMPRE a WAV
+        audio = AudioSegment.from_file(temp_input.name)
+        temp_wav = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+        audio.export(temp_wav.name, format="wav")
+
+        # Reconocer voz
+        with sr.AudioFile(temp_wav.name) as source:
+            audio_data = recognizer.record(source)
+
+        texto = recognizer.recognize_google(audio_data, language="es-ES")
+
+        return jsonify({"texto": texto})
+
+    except Exception as e:
+        print("Error Voz:", str(e))
+        return jsonify({"texto": ""})
+
+    finally:
+        # Limpiar archivos temporales
         try:
-            # Conversión necesaria para iPhone y navegadores
-            AudioSegment.from_file(tmp_in.name).export(tmp_wav, format="wav")
-            with sr.AudioFile(tmp_wav) as source:
-                audio = recognizer.record(source)
-            texto = recognizer.recognize_google(audio, language="es-ES")
-            return jsonify({"texto": texto})
-        except Exception as e:
-            print(f"Error Voz: {e}")
-            return jsonify({"texto": ""})
-        finally:
-            if os.path.exists(tmp_in.name): os.remove(tmp_in.name)
-            if os.path.exists(tmp_wav): os.remove(tmp_wav)
-                
+            if os.path.exists(temp_input.name):
+                os.remove(temp_input.name)
+            if os.path.exists(temp_wav.name):
+                os.remove(temp_wav.name)
+        except:
+            pass
+
 
 @app.route("/validar", methods=["POST"])
 def validar():
@@ -280,6 +296,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
