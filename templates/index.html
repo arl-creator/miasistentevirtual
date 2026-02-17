@@ -730,21 +730,7 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
         mensajeValidacion.innerText = "❌ Hubo un error. Inténtalo de nuevo.";
         btnGrabarIntento.style.display = "block";
     });
-  from pydub import AudioSegment
-import tempfile
-import os
-// Función para iniciar grabación
-function iniciarGrabacionIntento() {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        mediaRecorderIntento = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-        audioChunksIntento = [];
-        mediaRecorderIntento.addEventListener("dataavailable", e => audioChunksIntento.push(e.data));
-        mediaRecorderIntento.addEventListener("stop", procesarGrabacionIntento);
-        mediaRecorderIntento.start();
-        mensajeValidacion.innerText = "🎙️ Grabando tu repetición... ¡Suelta el botón cuando termines!";
-    }).catch(() => { mensajeValidacion.innerText = "❌ No se pudo acceder al micrófono."; });
-}
-
+ 
 // Función para detener grabación
 function detenerGrabacionIntento() {
     if (mediaRecorderIntento && mediaRecorderIntento.state === "recording") {
@@ -783,12 +769,11 @@ function procesarGrabacionIntento() {
         });
 }
 
-}
-
 </script>
 </body>
 
 </html>
+
 
 
 
