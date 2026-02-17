@@ -301,7 +301,6 @@ function enviarAudio(audioBlob, nombreArchivo) {
     });
 }
 
-
 // --- LÓGICA DE EJERCICIOS DE PALABRAS ---
 async function iniciarSecuenciaPalabras(palabras) {
     palabrasPendientes = [...palabras];
@@ -347,6 +346,19 @@ async function reproducirSiguientePalabra() {
         reproducirSiguientePalabra();
     }
 }
+  
+btnFrases.addEventListener("click", async () => {
+  respuestaElemento.innerText = "🎲 Generando palabras...";
+
+  const res = await fetch("/palabras_vocales");
+  const data = await res.json();
+
+  if (data.palabras && data.palabras.length > 0) {
+    iniciarSecuenciaPalabras(data.palabras);
+  } else {
+    respuestaElemento.innerText = "❌ No se pudieron generar palabras";
+  }
+});
 
 // --- EJERCICIOS DE ORACIONES ---
 // --- FUNCIÓN PARA INICIAR EJERCICIO DE ORACIONES (Con orden de audio corregido) ---
@@ -442,7 +454,6 @@ function mostrarImagenes(urls) {
         imagenesContenedor.appendChild(img);
     });
 }
-
 
 btnGrabarIntento.addEventListener("pointerdown", () => {
   audioChunksIntento = [];
@@ -612,6 +623,7 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
 </body>
 
 </html>
+
 
 
 
