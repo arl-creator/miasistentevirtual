@@ -559,14 +559,13 @@ function enviarIntento(blob, nombre) {
 // --- VALIDACIÓN DEL INTENTO (CORREGIDA) ---
 // --- VALIDACIÓN DEL INTENTO (CORREGIDA Y OPTIMIZADA) ---
 function validarIntento(respuestaCorrecta, intentoNiño) {
-    // 1. Verificación inicial: ¿Hay voz?
+
     if (!intentoNiño || intentoNiño.trim() === "") {
         mensajeValidacion.innerText = "🎤 No te escuché bien, ¡inténtalo de nuevo!";
         btnGrabarIntento.style.display = "block";
         return;
     }
 
-    // 2. Enviar a Python para comparar con IA
     fetch("/validar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -574,17 +573,15 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
     })
     .then(res => res.json())
     .then(data => {
-        // Mostramos el feedback visual
+
         const mensajeFinal = data.mensaje + ` (Tú dijiste: "${intentoNiño}")`;
         mensajeValidacion.innerText = mensajeFinal;
-        btnGrabarIntento.style.display = "none"; // Ocultamos mientras habla el asistente
+        btnGrabarIntento.style.display = "none";
 
-        // Definimos si el niño tuvo éxito
         const esCorrecto = data.correcto || 
-                          ["muy bien", "perfecto", "excelente", "lograste", "correcto"]
-                          .some(palabra => data.mensaje.toLowerCase().includes(palabra));
+            ["muy bien", "perfecto", "excelente", "lograste", "correcto"]
+            .some(palabra => data.mensaje.toLowerCase().includes(palabra));
 
-        // 3. Generar Audio del Feedback (Ej: "¡Muy bien hecho!")
         fetch("/tts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -592,48 +589,69 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
         })
         .then(res => res.json())
         .then(dataTTS => {
+
             if (!dataTTS.audio_url) {
                 btnGrabarIntento.style.display = "block";
                 return;
             }
 
             const audioMensaje = new Audio(dataTTS.audio_url + "?t=" + new Date().getTime());
-            
-            audioMensaje.onended = () => {
-                // --- CASO A: SECUENCIA DE 5 VOCALES ---
+
+            audioMensaje.onended = async () => {
+
+                // --- CASO A: PALABRAS ---
                 if (!btnGrabarIntento.dataset.oracion) {
+
                     if (esCorrecto) {
-                        // Solo si es correcto, quitamos la palabra de la lista y avanzamos
+
                         if (palabrasPendientes.length > 0) {
                             palabrasPendientes.shift();
                             palabrasCompletadas++;
                         }
-                        reproducirSiguientePalabra(); 
+
+                        reproducirSiguientePalabra();
+
                     } else {
-                        // Si falló, le devolvemos el botón para que reintente LA MISMA palabra
                         btnGrabarIntento.style.display = "block";
                         mensajeValidacion.innerText = "¡Casi! Inténtalo una vez más.";
                     }
+
                 } 
-                // --- CASO B: EJERCICIO DE ORACIÓN ---
+                // --- CASO B: ORACIONES ---
                 else {
+
                     if (esCorrecto) {
-                        // Éxito en oración: Mostramos confeti o mensaje y regresamos al menú
+
                         respuestaElemento.innerText = "✨ ¡Increíble! Has terminado la oración.";
-                        setTimeout(() => {
-                            contenedorEjercicios.style.display = "block";
-                            mensajeValidacion.innerText = "¡Elige otro ejercicio!";
-                            delete btnGrabarIntento.dataset.oracion; // Limpiamos para la próxima
+
+                        delete btnGrabarIntento.dataset.oracion;
+
+                        setTimeout(async () => {
+
+                            mensajeValidacion.innerText = "";
+                            contenedorEjercicios.style.display = "none";
+
+                            // 🔥 VOLVER AUTOMÁTICAMENTE A PALABRAS
+                            respuestaElemento.innerText = "🎲 Generando nuevas palabras...";
+
+                            const res = await fetch("/palabras_vocales");
+                            const data = await res.json();
+
+                            if (data.palabras && data.palabras.length > 0) {
+                                iniciarSecuenciaPalabras(data.palabras);
+                            } else {
+                                respuestaElemento.innerText = "❌ No se pudieron generar palabras";
+                            }
+
                         }, 2000);
+
                     } else {
-                        // Falló la oración: Reintentar
                         btnGrabarIntento.style.display = "block";
                     }
                 }
             };
 
-            audioMensaje.play().catch(err => {
-                console.log("Error al reproducir feedback:", err);
+            audioMensaje.play().catch(() => {
                 btnGrabarIntento.style.display = "block";
             });
         });
@@ -643,12 +661,13 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
         mensajeValidacion.innerText = "❌ Hubo un error. Inténtalo de nuevo.";
         btnGrabarIntento.style.display = "block";
     });
-// Cerramos el script y el cuerpo del documento
 }
+
 </script>
 </body>
 
 </html>
+
 
 
 
