@@ -624,35 +624,13 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
         mensajeValidacion.innerText = "❌ Hubo un error. Inténtalo de nuevo.";
         btnGrabarIntento.style.display = "block";
     });
-// ... (aquí termina tu función validarIntento que pegaste antes)
-
-// --- ACTIVACIÓN DE BOTONES Y MENÚS ---
-// Esto hace que el menú de ejercicios sea visible apenas carga la página
-contenedorEjercicios.style.display = "block"; 
-
-// Esto le da vida al botón de "Practicar Oraciones"
-btnOraciones.addEventListener("click", () => {
-    const vocalAleatoria = ["a", "e", "i", "o", "u"][Math.floor(Math.random() * 5)];
-    respuestaElemento.innerText = "🎲 Pensando una oración...";
-    iniciarEjercicioVocal(vocalAleatoria);
-});
-async function reproducirSiguientePalabra() {
-    // Si ya no quedan palabras en la lista
-    if (palabrasPendientes.length === 0 && palabrasCompletadas > 0) {
-        respuestaElemento.innerText = "🥳 ¡Completaste todas las palabras! ¡Excelente trabajo!";
-        contenedorEjercicios.style.display = "block";
-        btnGrabarIntento.style.display = "none";
-        return;
-    }
-    // ... resto del código igual
-}
-
 // Cerramos el script y el cuerpo del documento
 }
 </script>
 </body>
 
 </html>
+
 
 
 
