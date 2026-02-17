@@ -94,46 +94,52 @@ def preguntar():
 
 
 @app.route("/voz", methods=["POST"])
-def reconocer_voz():
-    if "file" not in request.files:
-        return jsonify({"error": "No se envió ningún archivo de audio."}), 400
-
-    audio_file = request.files["file"]
-
-    import tempfile
-    import os
-    from pydub import AudioSegment
-    import speech_recognition as sr
-
+def voz():
     recognizer = sr.Recognizer()
 
     try:
-        # Guardar el archivo original temporalmente
-        with tempfile.NamedTemporaryFile(delete=False) as tmp_input:
-            audio_file.save(tmp_input)
-            tmp_input_path = tmp_input.name
+        if "file" not in request.files:
+            return jsonify({"texto": ""})
 
-        # Convertir a WAV
-        tmp_wav_path = tmp_input_path + ".wav"
-        audio = AudioSegment.from_file(tmp_input_path)
-        audio.export(tmp_wav_path, format="wav")
+        file = request.files["file"]
 
-        # Reconocimiento
-        with sr.AudioFile(tmp_wav_path) as source:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".tmp") as temp_input:
+            file.save(temp_input.name)
+
+        # Convertir con formato detectado
+        audio = AudioSegment.from_file(temp_input.name)
+        temp_wav_path = temp_input.name + ".wav"
+        audio.export(temp_wav_path, format="wav")
+
+        with sr.AudioFile(temp_wav_path) as source:
             audio_data = recognizer.record(source)
-            texto = recognizer.recognize_google(audio_data, language="es-MX")
+
+        texto = recognizer.recognize_google(audio_data, language="es-ES")
+
+        print("Texto reconocido:", texto)
 
         return jsonify({"texto": texto})
 
     except sr.UnknownValueError:
-        return jsonify({"error": "No se entendió el audio"}), 400
+        print("No se entendió el audio")
+        return jsonify({"texto": ""})
+
+    except sr.RequestError as e:
+        print("Error con Google STT:", e)
+        return jsonify({"texto": ""})
+
     except Exception as e:
-        return jsonify({"error": f"No se pudo procesar el audio: {str(e)}"}), 400
+        print("Error general en voz:", repr(e))
+        return jsonify({"texto": ""})
+
     finally:
-        # Limpiar archivos temporales
-        for f in [tmp_input_path, tmp_wav_path]:
-            if os.path.exists(f):
-                os.remove(f)
+        try:
+            if os.path.exists(temp_input.name):
+                os.remove(temp_input.name)
+            if os.path.exists(temp_wav_path):
+                os.remove(temp_wav_path)
+        except:
+            pass
 
 
 @app.route("/validar", methods=["POST"])
@@ -303,6 +309,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
