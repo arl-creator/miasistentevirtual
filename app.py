@@ -142,6 +142,7 @@ def validar():
     return jsonify({"mensaje": mensaje, "audio_url": f"/static/audio/{audio_name}", "correcto": exito})
     
 # nuevoooooooo
+
 @app.route("/oracion_vocal", methods=["POST"])
 def oracion_vocal():
     data = request.json
@@ -169,19 +170,23 @@ def oracion_vocal():
                 {"role": "system", "content": "Eres un maestro de preescolar."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.8,
+            temperature=0.9,
             max_tokens=150
         )
 
         contenido = response['choices'][0]['message']['content'].strip()
 
-        # Intentamos convertir a JSON
+        # 🔥 Limpieza de markdown
+        if "```json" in contenido:
+            contenido = contenido.split("```json")[1].split("```")[0].strip()
+        elif "```" in contenido:
+            contenido = contenido.split("```")[1].split("```")[0].strip()
+
         try:
             resultado = json.loads(contenido)
             palabra = resultado["palabra_clave"]
             oracion = resultado["oracion"]
         except:
-            # Si DeepSeek no responde exactamente en JSON
             palabra = "Abeja"
             oracion = "La abeja vuela en el jardín."
 
@@ -197,6 +202,7 @@ def oracion_vocal():
             "palabra_clave": "Abeja",
             "oracion": "La abeja vuela en el jardín."
         })
+        
 
 @app.route("/palabras_vocales", methods=["GET"])
 def palabras_vocales():
@@ -273,6 +279,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
