@@ -94,29 +94,30 @@ def preguntar():
 @app.route("/voz", methods=["POST"])
 def reconocer_voz():
     recognizer = sr.Recognizer()
+
     if "file" not in request.files:
         return jsonify({"texto": ""}), 400
-    
+
     audio_file = request.files["file"]
-    ext = ".webm" if "webm" in audio_file.content_type else ".mp4"
-    
-    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp_in:
-        audio_file.save(tmp_in.name)
-        tmp_wav = tmp_in.name + ".wav"
+
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        audio_file.save(tmp.name)
+
         try:
-            # Conversión necesaria para iPhone y navegadores
-            AudioSegment.from_file(tmp_in.name).export(tmp_wav, format="wav")
-            with sr.AudioFile(tmp_wav) as source:
+            with sr.AudioFile(tmp.name) as source:
                 audio = recognizer.record(source)
+
             texto = recognizer.recognize_google(audio, language="es-ES")
             return jsonify({"texto": texto})
+
         except Exception as e:
             print(f"Error Voz: {e}")
             return jsonify({"texto": ""})
+
         finally:
-            if os.path.exists(tmp_in.name): os.remove(tmp_in.name)
-            if os.path.exists(tmp_wav): os.remove(tmp_wav)
-                
+            if os.path.exists(tmp.name):
+                os.remove(tmp.name)
+
 @app.route("/validar", methods=["POST"])
 def validar():
     data = request.json
@@ -279,6 +280,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
