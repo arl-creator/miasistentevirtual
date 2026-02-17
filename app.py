@@ -154,15 +154,42 @@ def palabras_vocales():
     return jsonify({"palabras": palabras})
     
 def generar_palabra_aleatoria(vocal):
-    prompt = f"Dame una palabra infantil sencilla que empiece con la letra {vocal}. Solo una palabra."
-    
-    respuesta = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
-    )
+    prompt = f"""
+    Dame una palabra infantil sencilla que empiece con la letra {vocal}.
+    Responde SOLO la palabra.
+    """
 
-    palabra = respuesta.choices[0].message.content.strip().lower()
-    return palabra
+    try:
+        response = openai.ChatCompletion.create(
+            model="deepseek-chat",  # 👈 sigues usando DeepSeek
+            messages=[
+                {"role": "system", "content": "Responde solo una palabra infantil."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.8,
+            max_tokens=20
+        )
+
+        palabra = response['choices'][0]['message']['content'].strip()
+
+        # limpieza por si responde algo extra
+        palabra = palabra.replace('"', '').replace('.', '').split()[0]
+
+        return palabra.capitalize()
+
+    except Exception as e:
+        print("Error generando palabra:", e)
+
+        # respaldo si falla DeepSeek
+        ejemplos = {
+            "a": "Abeja",
+            "e": "Elefante",
+            "i": "Isla",
+            "o": "Oso",
+            "u": "Uva"
+        }
+
+        return ejemplos.get(vocal.lower(), "Abeja")
 
         
 @app.route("/tts", methods=["POST"])
@@ -190,6 +217,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
