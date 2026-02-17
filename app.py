@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 from gtts import gTTS
 import uuid
-#from pydub import AudioSegment
+from pydub import AudioSegment
 import tempfile
 import json
 
@@ -279,6 +279,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
