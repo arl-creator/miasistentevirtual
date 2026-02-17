@@ -46,10 +46,11 @@ def generar_audios_pregrabados():
     for clave, datos in respuestas_fijas.items(): 
         ruta_audio = datos["audio"] 
         if not os.path.exists(ruta_audio): 
-            try:
-                tts = gTTS(datos["texto"], lang="es") 
-                tts.save(ruta_audio)
-            except: pass
+            print(f"Generando audio para: {clave}") 
+            tts = gTTS(datos["texto"], lang="es") 
+            os.makedirs(os.path.dirname(ruta_audio), exist_ok=True) 
+            tts.save(ruta_audio)
+
 
 def obtener_respuesta_deepseek(pregunta, system_prompt="Eres un asistente amigable.", temperature=0.7):
     try:
@@ -94,6 +95,55 @@ def preguntar():
 from pydub import AudioSegment
 import tempfile
 import os
+// Función para iniciar grabación
+function iniciarGrabacionIntento() {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        mediaRecorderIntento = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        audioChunksIntento = [];
+        mediaRecorderIntento.addEventListener("dataavailable", e => audioChunksIntento.push(e.data));
+        mediaRecorderIntento.addEventListener("stop", procesarGrabacionIntento);
+        mediaRecorderIntento.start();
+        mensajeValidacion.innerText = "🎙️ Grabando tu repetición... ¡Suelta el botón cuando termines!";
+    }).catch(() => { mensajeValidacion.innerText = "❌ No se pudo acceder al micrófono."; });
+}
+
+// Función para detener grabación
+function detenerGrabacionIntento() {
+    if (mediaRecorderIntento && mediaRecorderIntento.state === "recording") {
+        mediaRecorderIntento.stop();
+    }
+}
+
+// Escuchar tanto mouse como touch
+btnGrabarIntento.addEventListener("mousedown", iniciarGrabacionIntento);
+btnGrabarIntento.addEventListener("mouseup", detenerGrabacionIntento);
+btnGrabarIntento.addEventListener("touchstart", iniciarGrabacionIntento);
+btnGrabarIntento.addEventListener("touchend", detenerGrabacionIntento);
+
+function procesarGrabacionIntento() {
+    if (audioChunksIntento.length === 0) return;
+    const blob = new Blob(audioChunksIntento, { type: "audio/webm" });
+    audioChunksIntento = [];
+    const formData = new FormData();
+    formData.append("file", blob, "intento.webm");
+    mensajeValidacion.innerText = "⏳ Procesando tu repetición, espera un momento...";
+    btnGrabarIntento.style.display = "none";
+
+    fetch("/voz", { method: "POST", body: formData })
+        .then(res => res.json())
+        .then(data => {
+            const respuestaCorrecta = btnGrabarIntento.dataset.respuesta || btnGrabarIntento.dataset.oracion || "";
+            if (data.texto) validarIntento(respuestaCorrecta, data.texto);
+            else {
+                mensajeValidacion.innerText = "❌ No pude entender lo que dijiste.";
+                btnGrabarIntento.style.display = "block";
+            }
+        })
+        .catch(() => {
+            mensajeValidacion.innerText = "❌ Hubo un error al procesar tu repetición.";
+            btnGrabarIntento.style.display = "block";
+        });
+}
 
 @app.route("/voz", methods=["POST"])
 def voz():
@@ -311,6 +361,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
