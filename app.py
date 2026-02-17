@@ -142,6 +142,62 @@ def validar():
     return jsonify({"mensaje": mensaje, "audio_url": f"/static/audio/{audio_name}", "correcto": exito})
     
 # nuevoooooooo
+@app.route("/oracion_vocal", methods=["POST"])
+def oracion_vocal():
+    data = request.json
+    vocal = data.get("vocal", "").lower()
+
+    if vocal not in ["a", "e", "i", "o", "u"]:
+        return jsonify({"error": "Vocal inválida"})
+
+    prompt = f"""
+    Genera:
+    1) Una palabra infantil sencilla que empiece con la letra {vocal}.
+    2) Una oración corta y fácil para niños que incluya esa palabra.
+
+    Responde SOLO en formato JSON así:
+    {{
+        "palabra_clave": "...",
+        "oracion": "..."
+    }}
+    """
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": "Eres un maestro de preescolar."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.8,
+            max_tokens=150
+        )
+
+        contenido = response['choices'][0]['message']['content'].strip()
+
+        # Intentamos convertir a JSON
+        try:
+            resultado = json.loads(contenido)
+            palabra = resultado["palabra_clave"]
+            oracion = resultado["oracion"]
+        except:
+            # Si DeepSeek no responde exactamente en JSON
+            palabra = "Abeja"
+            oracion = "La abeja vuela en el jardín."
+
+        return jsonify({
+            "palabra_clave": palabra,
+            "oracion": oracion
+        })
+
+    except Exception as e:
+        print("Error generando oración:", e)
+
+        return jsonify({
+            "palabra_clave": "Abeja",
+            "oracion": "La abeja vuela en el jardín."
+        })
+
 @app.route("/palabras_vocales", methods=["GET"])
 def palabras_vocales():
     vocales = ["a", "e", "i", "o", "u"]
@@ -217,6 +273,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
