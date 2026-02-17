@@ -98,10 +98,10 @@ import os
 @app.route("/voz", methods=["POST"])
 def voz():
     try:
-        if "audio" not in request.files:
-            return jsonify({"respuesta": "No se recibió audio"})
+        if "file" not in request.files:
+            return jsonify({"error": "No se recibió audio"})
 
-        audio_file = request.files["audio"]
+        audio_file = request.files["file"]
 
         import tempfile
         from pydub import AudioSegment
@@ -113,12 +113,12 @@ def voz():
             temp_wav_path = temp_wav.name
 
         try:
-            # Convertir cualquier formato a WAV
+            # Convertir cualquier formato (webm, mp4, m4a, etc) a WAV
             audio = AudioSegment.from_file(audio_file)
             audio.export(temp_wav_path, format="wav")
         except Exception as e:
             print("Error convirtiendo audio:", e)
-            return jsonify({"respuesta": "Error procesando el audio"})
+            return jsonify({"error": "Error procesando el audio"})
 
         recognizer = sr.Recognizer()
 
@@ -126,23 +126,22 @@ def voz():
             with sr.AudioFile(temp_wav_path) as source:
                 audio_data = recognizer.record(source)
                 texto = recognizer.recognize_google(audio_data, language="es-MX")
-            print("Texto reconocido:", texto)
         except sr.UnknownValueError:
             print("No se entendió el audio")
-            return jsonify({"respuesta": "No se entendió el audio"})
+            return jsonify({"error": "No se entendió el audio"})
         except Exception as e:
             print("Error reconocimiento:", e)
-            return jsonify({"respuesta": "Error al reconocer el audio"})
+            return jsonify({"error": "Error al reconocer el audio"})
         finally:
             if os.path.exists(temp_wav_path):
                 os.remove(temp_wav_path)
 
-        return jsonify({"respuesta": texto})
+        print("Texto reconocido:", texto)
+        return jsonify({"texto": texto})
 
     except Exception as e:
         print("Error general:", e)
-        return jsonify({"respuesta": "Ocurrió un error"})
-
+        return jsonify({"error": "Ocurrió un error"})
 
 
 @app.route("/validar", methods=["POST"])
@@ -312,6 +311,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
