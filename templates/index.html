@@ -165,6 +165,12 @@
       0% { transform: translateY(0) scale(1); opacity: 1; }
       100% { transform: translateY(-120vh) scale(1.2); opacity: 0; }
     }
+    #contenedor-ejercicios button {
+      margin: 8px;
+      padding: 12px 20px;
+      font-size: 1.2rem;
+      border-radius: 12px;
+    }
   </style>
 </head>
 <body>
@@ -360,6 +366,19 @@ btnFrases.addEventListener("click", async () => {
     respuestaElemento.innerText = "❌ No se pudieron generar palabras";
   }
 });
+  
+btnOraciones.addEventListener("click", () => {
+  respuestaElemento.innerText = "🔠 Elige una vocal para practicar:";
+
+  contenedorEjercicios.innerHTML = `
+    <button onclick="iniciarEjercicioVocal('a')">A</button>
+    <button onclick="iniciarEjercicioVocal('e')">E</button>
+    <button onclick="iniciarEjercicioVocal('i')">I</button>
+    <button onclick="iniciarEjercicioVocal('o')">O</button>
+    <button onclick="iniciarEjercicioVocal('u')">U</button>
+  `;
+});
+
 
 // --- EJERCICIOS DE ORACIONES ---
 // --- FUNCIÓN PARA INICIAR EJERCICIO DE ORACIONES (Con orden de audio corregido) ---
@@ -630,6 +649,7 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
 </body>
 
 </html>
+
 
 
 
