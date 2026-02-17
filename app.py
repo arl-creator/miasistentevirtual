@@ -140,33 +140,30 @@ def validar():
     # Lógica de éxito para el frontend
     exito = any(palabra in mensaje.lower() for palabra in ["muy bien", "perfecto", "excelente", "correcto"])
     return jsonify({"mensaje": mensaje, "audio_url": f"/static/audio/{audio_name}", "correcto": exito})
+    
+# nuevoooooooo
+@app.route("/palabras_vocales", methods=["GET"])
+def palabras_vocales():
+    vocales = ["a", "e", "i", "o", "u"]
+    palabras = []
 
-@app.route("/ejercicios_frases")
-def ejercicios_frases():
-    # Fallback por si la IA falla
-    default = {"palabras": ["Avión", "Elefante", "Isla", "Oso", "Uva"]}
-    try:
-        res = openai.ChatCompletion.create(
-            model="deepseek-chat",
-            messages=[{"role": "system", "content": "Responde SOLO JSON: {'palabras':[]}"}, {"role": "user", "content": "5 palabras con A,E,I,O,U"}],
-            temperature=0.7
-        )
-        cont = res['choices'][0]['message']['content']
-        if "```json" in cont: cont = cont.split("```json")[1].split("```")[0]
-        return jsonify(json.loads(cont))
-    except:
-        return jsonify(default)
+    for vocal in vocales:
+        palabra = generar_palabra_aleatoria(vocal)  # tu función IA
+        palabras.append(palabra)
 
-@app.route("/oracion_vocal", methods=["POST"])
-def oracion_vocal():
-    vocal = request.json.get("vocal", "A")
-    sys = "Responde SOLO JSON: {'oracion': '...', 'palabra_clave': '...'}"
-    res = obtener_respuesta_deepseek(f"Oración corta con la vocal {vocal}", sys)
-    try:
-        if "```json" in res: res = res.split("```json")[1].split("```")[0].strip()
-        return jsonify(json.loads(res))
-    except:
-        return jsonify({"oracion": f"El {vocal}migo es bueno.", "palabra_clave": "Amigo"})
+    return jsonify({"palabras": palabras})
+    
+def generar_palabra_aleatoria(vocal):
+    prompt = f"Dame una palabra infantil sencilla que empiece con la letra {vocal}. Solo una palabra."
+    
+    respuesta = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    palabra = respuesta.choices[0].message.content.strip().lower()
+    return palabra
+
         
 @app.route("/tts", methods=["POST"])
 def tts():
@@ -193,6 +190,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
