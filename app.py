@@ -100,36 +100,46 @@ def voz():
     recognizer = sr.Recognizer()
 
     try:
+        if "file" not in request.files:
+            return jsonify({"texto": ""})
+
         file = request.files["file"]
 
-        # Guardar archivo temporal
-        with tempfile.NamedTemporaryFile(delete=False) as temp_input:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".tmp") as temp_input:
             file.save(temp_input.name)
 
-        # Convertir SIEMPRE a WAV
+        # Convertir con formato detectado
         audio = AudioSegment.from_file(temp_input.name)
-        temp_wav = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-        audio.export(temp_wav.name, format="wav")
+        temp_wav_path = temp_input.name + ".wav"
+        audio.export(temp_wav_path, format="wav")
 
-        # Reconocer voz
-        with sr.AudioFile(temp_wav.name) as source:
+        with sr.AudioFile(temp_wav_path) as source:
             audio_data = recognizer.record(source)
 
         texto = recognizer.recognize_google(audio_data, language="es-ES")
 
+        print("Texto reconocido:", texto)
+
         return jsonify({"texto": texto})
 
+    except sr.UnknownValueError:
+        print("No se entendió el audio")
+        return jsonify({"texto": ""})
+
+    except sr.RequestError as e:
+        print("Error con Google STT:", e)
+        return jsonify({"texto": ""})
+
     except Exception as e:
-        print("Error Voz:", str(e))
+        print("Error general en voz:", repr(e))
         return jsonify({"texto": ""})
 
     finally:
-        # Limpiar archivos temporales
         try:
             if os.path.exists(temp_input.name):
                 os.remove(temp_input.name)
-            if os.path.exists(temp_wav.name):
-                os.remove(temp_wav.name)
+            if os.path.exists(temp_wav_path):
+                os.remove(temp_wav_path)
         except:
             pass
 
@@ -301,6 +311,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
