@@ -123,9 +123,11 @@ def voz():
         recognizer = sr.Recognizer()
 
         try:
-            with sr.AudioFile(temp_wav_path) as source:
+           with sr.AudioFile(temp_wav_path) as source:
                 audio_data = recognizer.record(source)
-                texto = recognizer.recognize_google(audio_data, language="es")
+                texto = recognizer.recognize_google(audio_data, language="es-MX")
+            print("Texto reconocido:", texto)
+
         except sr.UnknownValueError:
             print("No se entendió el audio")
             return jsonify({"respuesta": "No se entendió el audio"})
@@ -313,6 +315,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
