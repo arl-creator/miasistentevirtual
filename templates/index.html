@@ -296,7 +296,36 @@ botonMicrofono.addEventListener("click", async () => {
     respuestaElemento.innerText = "❌ Permite el uso del micrófono";
   }
 });
+document.getElementById("btnIniciar").addEventListener("click", iniciarGrabacionIntento);
+document.getElementById("btnDetener").addEventListener("click", detenerGrabacionIntento);
 
+async function iniciarGrabacionIntento() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = enviarAudio;
+
+        mediaRecorder.start();
+        document.getElementById("estadoGrabacion").innerText = "🎤 Grabando...";
+    } catch (error) {
+        alert("Debes permitir el micrófono.");
+    }
+}
+
+function detenerGrabacionIntento() {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+        document.getElementById("estadoGrabacion").innerText = "⏳ Procesando...";
+    }
+}
+  
 function enviarAudio(audioBlob, nombreArchivo) {
     const formData = new FormData();
     formData.append("file", audioBlob, nombreArchivo);
@@ -760,6 +789,7 @@ function procesarGrabacionIntento() {
 </body>
 
 </html>
+
 
 
 
