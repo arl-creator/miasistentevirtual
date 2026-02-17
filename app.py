@@ -113,7 +113,7 @@ def voz():
             temp_wav_path = temp_wav.name
 
         try:
-            # Convertir cualquier formato (webm, mp4, m4a, etc) a WAV
+            # Convertir cualquier formato a WAV
             audio = AudioSegment.from_file(audio_file)
             audio.export(temp_wav_path, format="wav")
         except Exception as e:
@@ -125,20 +125,17 @@ def voz():
         try:
             with sr.AudioFile(temp_wav_path) as source:
                 audio_data = recognizer.record(source)
-               texto = recognizer.recognize_google(audio_data, language="es")
+                texto = recognizer.recognize_google(audio_data, language="es")
         except sr.UnknownValueError:
             print("No se entendió el audio")
             return jsonify({"respuesta": "No se entendió el audio"})
         except Exception as e:
             print("Error reconocimiento:", e)
             return jsonify({"respuesta": "Error al reconocer el audio"})
-
         finally:
-            # Eliminar archivo temporal
             if os.path.exists(temp_wav_path):
                 os.remove(temp_wav_path)
 
-        # Aquí continúa tu lógica normal
         print("Texto reconocido:", texto)
 
         return jsonify({"respuesta": texto})
@@ -146,6 +143,7 @@ def voz():
     except Exception as e:
         print("Error general:", e)
         return jsonify({"respuesta": "Ocurrió un error"})
+
 
 
 @app.route("/validar", methods=["POST"])
@@ -315,6 +313,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
