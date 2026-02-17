@@ -227,6 +227,7 @@
     <div id="contenedor-ejercicios" style="display:none;">
         <button id="btn-frases">🗣️ Practicar Palabras (A, E, I, O, U)</button>
         <button id="btn-oraciones">🔠 Practicar Oraciones</button>
+        <button onclick="volverAPalabras()">Volver a Palabras</button>
     </div>
     <audio id="audio-respuesta" playsinline></audio>
     <audio id="audio-repeticion" playsinline></audio>
@@ -245,6 +246,7 @@ const btnFrases = document.getElementById("btn-frases");
 const btnOraciones = document.getElementById("btn-oraciones");
 const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 const opcionesAudio = { mimeType: "audio/webm" };
+  
 // const audioIOS = document.getElementById("audioIOS");
 // const esIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
   
@@ -254,6 +256,7 @@ let mediaRecorder;
 let mediaRecorderIntento;
 let audioChunks = [];
 let audioChunksIntento = [];
+
   
   
 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -767,12 +770,18 @@ function procesarGrabacionIntento() {
             mensajeValidacion.innerText = "❌ Hubo un error al procesar tu repetición.";
             btnGrabarIntento.style.display = "block";
         });
+      function volverAPalabras() {
+        document.getElementById("seccionOraciones").style.display = "none";
+        document.getElementById("seccionPalabras").style.display = "block";
+    }
+
 }
 
 </script>
 </body>
 
 </html>
+
 
 
 
