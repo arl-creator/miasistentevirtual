@@ -166,7 +166,7 @@ def oracion_vocal():
     vocal = data.get("vocal", "").lower()
 
     if vocal not in ["a", "e", "i", "o", "u"]:
-        return jsonify({"error": "Vocal inválida"})
+        return jsonify({"error": "Vocal inválida"}), 400
 
     prompt = f"""
     Genera:
@@ -184,32 +184,36 @@ def oracion_vocal():
         response = openai.ChatCompletion.create(
             model="deepseek-chat",
             messages=[
-                {"role": "system", "content": "Eres un maestro de preescolar."},
+                {"role": "system", "content": "Eres un maestro de preescolar creativo."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.9,
+            temperature=0.95,
             max_tokens=150
         )
 
         contenido = response['choices'][0]['message']['content'].strip()
 
-        # 🔥 Limpieza de markdown
-        if "```json" in contenido:
-            contenido = contenido.split("```json")[1].split("```")[0].strip()
-        elif "```" in contenido:
-            contenido = contenido.split("```")[1].split("```")[0].strip()
+        # 🔥 Limpieza por si DeepSeek responde con ```json
+        if "```" in contenido:
+            contenido = contenido.split("```")[1]
+            contenido = contenido.replace("json", "").strip()
 
-        try:
-            resultado = json.loads(contenido)
-            palabra = resultado["palabra_clave"]
-            oracion = resultado["oracion"]
-        except:
-            palabra = "Abeja"
-            oracion = "La abeja vuela en el jardín."
+        resultado = json.loads(contenido)
+
+        palabra = resultado["palabra_clave"].strip()
+        oracion = resultado["oracion"].strip()
+
+        # 🎵 Crear audio automáticamente
+        nombre_audio = f"oracion_{uuid.uuid4()}.mp3"
+        ruta_audio = os.path.join(AUDIO_DIR, nombre_audio)
+
+        tts = gTTS(oracion, lang="es")
+        tts.save(ruta_audio)
 
         return jsonify({
             "palabra_clave": palabra,
-            "oracion": oracion
+            "oracion": oracion,
+            "audio_url": f"/static/audio/{nombre_audio}"
         })
 
     except Exception as e:
@@ -217,7 +221,8 @@ def oracion_vocal():
 
         return jsonify({
             "palabra_clave": "Abeja",
-            "oracion": "La abeja vuela en el jardín."
+            "oracion": "La abeja vuela en el jardín.",
+            "audio_url": ""
         })
         
 
@@ -296,6 +301,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
