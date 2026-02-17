@@ -461,6 +461,7 @@ function enviarPregunta(pregunta) {
         audioRepeticion.onended = () => {
             btnGrabarIntento.style.display = "block";
             btnGrabarIntento.dataset.respuesta = data.respuesta;
+            contenedorEjercicios.style.display = "block";
         };
     });
 }
@@ -618,37 +619,54 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
 
                 } 
                 // --- CASO B: ORACIONES ---
-                else {
-
-                    if (esCorrecto) {
-
-                        respuestaElemento.innerText = "✨ ¡Increíble! Has terminado la oración.";
-
-                        delete btnGrabarIntento.dataset.oracion;
-
-                        setTimeout(async () => {
-
+                // --- CASO B: ORACIONES ---
+                    else {
+                    
+                        if (esCorrecto) {
+                    
+                            respuestaElemento.innerText = "✨ ¡Increíble! Has terminado la oración.";
                             mensajeValidacion.innerText = "";
-                            contenedorEjercicios.style.display = "none";
-
-                            // 🔥 VOLVER AUTOMÁTICAMENTE A PALABRAS
-                            respuestaElemento.innerText = "🎲 Generando nuevas palabras...";
-
-                            const res = await fetch("/palabras_vocales");
-                            const data = await res.json();
-
-                            if (data.palabras && data.palabras.length > 0) {
-                                iniciarSecuenciaPalabras(data.palabras);
-                            } else {
-                                respuestaElemento.innerText = "❌ No se pudieron generar palabras";
-                            }
-
-                        }, 2000);
-
-                    } else {
-                        btnGrabarIntento.style.display = "block";
+                    
+                            delete btnGrabarIntento.dataset.oracion;
+                    
+                            setTimeout(() => {
+                    
+                                // 🔥 MOSTRAR DE NUEVO LOS BOTONES
+                                contenedorEjercicios.style.display = "block";
+                    
+                                // 🔥 RESTAURAR BOTONES ORIGINALES
+                                contenedorEjercicios.innerHTML = `
+                                    <button id="btn-frases">🗣️ Practicar Palabras (A, E, I, O, U)</button>
+                                    <button id="btn-oraciones">🔠 Practicar Oraciones</button>
+                                `;
+                    
+                                // 🔥 VOLVER A ASIGNAR EVENTOS (MUY IMPORTANTE)
+                                document.getElementById("btn-frases").addEventListener("click", async () => {
+                                    respuestaElemento.innerText = "🎲 Generando palabras...";
+                                    const res = await fetch("/palabras_vocales");
+                                    const data = await res.json();
+                                    if (data.palabras && data.palabras.length > 0) {
+                                        iniciarSecuenciaPalabras(data.palabras);
+                                    }
+                                });
+                    
+                                document.getElementById("btn-oraciones").addEventListener("click", () => {
+                                    respuestaElemento.innerText = "🔠 Elige una vocal para practicar:";
+                                    contenedorEjercicios.innerHTML = `
+                                        <button onclick="iniciarEjercicioVocal('a')">A</button>
+                                        <button onclick="iniciarEjercicioVocal('e')">E</button>
+                                        <button onclick="iniciarEjercicioVocal('i')">I</button>
+                                        <button onclick="iniciarEjercicioVocal('o')">O</button>
+                                        <button onclick="iniciarEjercicioVocal('u')">U</button>
+                                    `;
+                                });
+                    
+                            }, 2000);
+                    
+                        } else {
+                            btnGrabarIntento.style.display = "block";
+                        }
                     }
-                }
             };
 
             audioMensaje.play().catch(() => {
@@ -667,6 +685,7 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
 </body>
 
 </html>
+
 
 
 
