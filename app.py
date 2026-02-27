@@ -131,10 +131,12 @@ def preguntar():
 def voz():
     from pydub import AudioSegment
     import imageio_ffmpeg
+    import tempfile
+    import os
+    import speech_recognition as sr
 
     recognizer = sr.Recognizer()
     
-    # Declaramos las variables al inicio para que el "finally" no falle
     input_path = None
     wav_path = None
 
@@ -144,8 +146,13 @@ def voz():
 
         file = request.files["file"]
 
-        # Guardar archivo original
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_input:
+        # 🔥 LA MAGIA ESTÁ AQUÍ: Leemos la extensión real que manda el celular (.mp4 o .webm)
+        extension = os.path.splitext(file.filename)[1]
+        if not extension:
+            extension = ".webm"
+
+        # Guardar archivo original con la extensión correcta
+        with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as temp_input:
             file.save(temp_input.name)
             input_path = temp_input.name
 
@@ -175,7 +182,7 @@ def voz():
         return jsonify({"texto": ""})
         
     finally:
-        # 🔥 Limpieza segura sin errores de indentación
+        # Limpieza segura de archivos
         try:
             if input_path and os.path.exists(input_path):
                 os.remove(input_path)
@@ -183,6 +190,7 @@ def voz():
                 os.remove(wav_path)
         except Exception as e:
             pass
+            
 
 @app.route("/validar", methods=["POST"])
 def validar():
@@ -365,6 +373,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
