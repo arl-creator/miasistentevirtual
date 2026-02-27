@@ -5,13 +5,13 @@ from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 from gtts import gTTS
 import uuid
-from pydub import AudioSegment
+# from pydub import AudioSegment
 import tempfile
 import json
-import shutil
+#import shutil
 
 # Configurar ffmpeg automáticamente si existe en el sistema
-AudioSegment.converter = shutil.which("ffmpeg")
+#AudioSegment.converter = shutil.which("ffmpeg")
 
 # 1. CARGA DE CONFIGURACIÓN
 load_dotenv()
@@ -107,15 +107,10 @@ def voz():
 
         file = request.files["file"]
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".tmp") as temp_input:
-            file.save(temp_input.name)
+        with tempfile.NamedTemporaryFile(delete=False) as temp_audio:
+            file.save(temp_audio.name)
 
-        # Convertir con formato detectado
-        audio = AudioSegment.from_file(temp_input.name)
-        temp_wav_path = temp_input.name + ".wav"
-        audio.export(temp_wav_path, format="wav")
-
-        with sr.AudioFile(temp_wav_path) as source:
+        with sr.AudioFile(temp_audio.name) as source:
             audio_data = recognizer.record(source)
 
         texto = recognizer.recognize_google(audio_data, language="es-ES")
@@ -124,27 +119,10 @@ def voz():
 
         return jsonify({"texto": texto})
 
-    except sr.UnknownValueError:
-        print("No se entendió el audio")
-        return jsonify({"texto": ""})
-
-    except sr.RequestError as e:
-        print("Error con Google STT:", e)
-        return jsonify({"texto": ""})
-
     except Exception as e:
-        print("Error general en voz:", repr(e))
+        print("Error en voz:", e)
         return jsonify({"texto": ""})
-
-    finally:
-        try:
-            if 'temp_input' in locals() and os.path.exists(temp_input.name):
-                os.remove(temp_input.name)
-            if 'temp_wav_path' in locals() and os.path.exists(temp_wav_path):
-                os.remove(temp_wav_path)
-        except:
-            pass
-
+        
 
 @app.route("/validar", methods=["POST"])
 def validar():
@@ -313,6 +291,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
