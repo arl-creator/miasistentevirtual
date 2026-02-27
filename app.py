@@ -99,6 +99,10 @@ def preguntar():
 
 @app.route("/voz", methods=["POST"])
 def voz():
+    import subprocess
+    import tempfile
+    import os
+
     recognizer = sr.Recognizer()
 
     try:
@@ -107,15 +111,35 @@ def voz():
 
         file = request.files["file"]
 
-        with tempfile.NamedTemporaryFile(delete=False) as temp_audio:
-            file.save(temp_audio.name)
+        # Guardar audio original
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".input") as temp_input:
+            file.save(temp_input.name)
+            input_path = temp_input.name
 
-        with sr.AudioFile(temp_audio.name) as source:
+        # Crear archivo WAV temporal
+        output_path = input_path + ".wav"
+
+        # Convertir a WAV usando ffmpeg
+        subprocess.run([
+            "ffmpeg",
+            "-y",
+            "-i", input_path,
+            "-ar", "16000",
+            "-ac", "1",
+            output_path
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        # Leer WAV convertido
+        with sr.AudioFile(output_path) as source:
             audio_data = recognizer.record(source)
 
         texto = recognizer.recognize_google(audio_data, language="es-ES")
 
         print("Texto reconocido:", texto)
+
+        # Limpiar archivos
+        os.remove(input_path)
+        os.remove(output_path)
 
         return jsonify({"texto": texto})
 
@@ -291,6 +315,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
