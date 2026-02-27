@@ -25,6 +25,7 @@ os.makedirs("static/audio", exist_ok=True)
 AUDIO_DIR = os.path.join("static", "audio")
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
+USE_API = bool(openai.api_key)
 
 # 2. TUS DATOS (Imágenes y Respuestas)
 imagenes_fijas = {
@@ -307,6 +308,15 @@ def oracion_vocal():
     })
         
 def generar_palabra_aleatoria(vocal):
+    if not USE_API:
+        PALABRAS_RESPALDO = {
+            "a": ["Abeja", "Avión", "Árbol", "Araña"],
+            "e": ["Elefante", "Escuela", "Estrella", "Espejo"],
+            "i": ["Iguana", "Isla", "Iglesia", "Imán"],
+            "o": ["Oso", "Oveja", "Ola", "Ojo"],
+            "u": ["Uva", "Unicornio", "Uniforme", "Uno"]
+        }
+        return random.choice(PALABRAS_RESPALDO.get(vocal.lower(), ["Abeja"]))
     try:
         prompt = f"Dame una palabra infantil sencilla que empiece con la letra {vocal}. Responde SOLO la palabra."
 
@@ -385,6 +395,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
