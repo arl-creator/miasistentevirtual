@@ -235,7 +235,7 @@ let audioChunks = [];
 let audioChunksIntento = [];
 
   
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
   respuestaElemento.innerText = "❌ Tu navegador no permite usar el micrófono";
 }
 
@@ -243,30 +243,55 @@ let audioChunksIntento = [];
 botonMicrofono.addEventListener("click", async () => {
   if (mediaRecorder && mediaRecorder.state === "recording") {
     mediaRecorder.stop();
-    botonMicrofono.style.background = "var(--primary)";
+    botonMicrofono.style.background = "var(--primary)"; // Asegúrate de tener esta variable CSS
     return;
   }
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const mimeType = isSafari ? 'audio/mp4' : 'audio/webm';
     
-    mediaRecorder = new MediaRecorder(stream, { mimeType });
+    // CAMBIO 1: Dejar que el navegador diga qué formato soporta (más seguro que usar Regex)
+    let opcionesDeAudio = {};
+    let extension = 'webm';
+    
+    if (MediaRecorder.isTypeSupported('audio/webm')) {
+      opcionesDeAudio = { mimeType: 'audio/webm' };
+    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+      opcionesDeAudio = { mimeType: 'audio/mp4' };
+      extension = 'mp4';
+    } else if (MediaRecorder.isTypeSupported('audio/m4a')) {
+      opcionesDeAudio = { mimeType: 'audio/m4a' };
+      extension = 'm4a';
+    }
+
+    // Si el navegador no soporta ninguno de arriba explícitamente, usará su valor por defecto
+    mediaRecorder = new MediaRecorder(stream, opcionesDeAudio);
     audioChunks = [];
 
-    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    // CAMBIO 2: Asegurarnos de que el pedacito de audio realmente tenga datos
+    mediaRecorder.ondataavailable = e => {
+      if (e.data && e.data.size > 0) {
+        audioChunks.push(e.data);
+      }
+    };
     
     mediaRecorder.onstop = () => {
-      const blob = new Blob(audioChunks, { type: mimeType });
-      const ext = isSafari ? 'mp4' : 'webm';
-      enviarAudio(blob, `grabacion.${ext}`);
+      // Usar el formato exacto que eligió el grabador
+      const tipoFinal = mediaRecorder.mimeType || 'audio/mp4'; 
+      const blob = new Blob(audioChunks, { type: tipoFinal });
+      
+      enviarAudio(blob, `grabacion.${extension}`);
+
+      // CAMBIO 3 (EL MÁS IMPORTANTE PARA IOS): Apagar el micrófono.
+      // Esto fuerza a Safari a "cerrar" el archivo y guardar el moov atom.
+      stream.getTracks().forEach(track => track.stop());
     };
 
     mediaRecorder.start();
     botonMicrofono.style.background = "red";
     respuestaElemento.innerText = "🎙️ Escuchando... Toca para parar";
   } catch (err) {
+    console.error("Error al acceder al micrófono:", err);
     respuestaElemento.innerText = "❌ Permite el uso del micrófono";
   }
 });
@@ -469,25 +494,35 @@ btnGrabarIntento.addEventListener("click", async () => {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const mimeTypeIntento = isSafari ? 'audio/mp4' : 'audio/webm';
+    // MISMA MAGIA QUE ARRIBA: Dejar que el navegador decida el formato
+    let opcionesDeAudio = {};
+    let extension = 'webm';
+    
+    if (MediaRecorder.isTypeSupported('audio/webm')) {
+      opcionesDeAudio = { mimeType: 'audio/webm' };
+    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+      opcionesDeAudio = { mimeType: 'audio/mp4' };
+      extension = 'mp4';
+    } else if (MediaRecorder.isTypeSupported('audio/m4a')) {
+      opcionesDeAudio = { mimeType: 'audio/m4a' };
+      extension = 'm4a';
+    }
 
-    mediaRecorderIntento = new MediaRecorder(stream, { mimeType: mimeTypeIntento });
+    mediaRecorderIntento = new MediaRecorder(stream, opcionesDeAudio);
     audioChunksIntento = [];
 
-    // 🔥 AQUÍ ESTÁ LA MAGIA: Ya no le preguntamos al iPhone cuánto pesa, 
-    // simplemente guardamos el audio directo igual que en el micro principal.
+    // VALIDAR QUE NO VENGA VACÍO
     mediaRecorderIntento.ondataavailable = e => {
-        audioChunksIntento.push(e.data);
+        if (e.data && e.data.size > 0) {
+            audioChunksIntento.push(e.data);
+        }
     };
 
     mediaRecorderIntento.onstop = () => {
-      // Creamos el archivo de audio con tu voz
-      const blob = new Blob(audioChunksIntento, { type: mimeTypeIntento });
-      const nombre = isSafari ? "intento.mp4" : "intento.webm";
+      const tipoFinal = mediaRecorderIntento.mimeType || 'audio/mp4'; 
+      const blob = new Blob(audioChunksIntento, { type: tipoFinal });
       
-      // Lo enviamos para que lo califique
-      enviarIntento(blob, nombre);
+      enviarIntento(blob, `intento.${extension}`);
 
       // Apagamos el micrófono hasta DESPUÉS de haber armado el archivo
       stream.getTracks().forEach(track => track.stop());
@@ -631,6 +666,7 @@ function volverAPalabras() {
 </script>
 </body>
 </html>
+
 
 
 
