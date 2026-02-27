@@ -190,7 +190,6 @@
   <img src="https://cdn-icons-png.flaticon.com/512/2784/2784389.png" class="globo globo3" alt="Globo">
   <body>
 </body>
-
 <header>
     <h1>👋 ¡Hola, amiguito!</h1>
     <p style="font-size:1.2rem;color:var(--text-dark)">Pregunta lo que quieras con tu voz</p>
@@ -747,49 +746,10 @@ function detenerGrabacionIntento() {
         mediaRecorderIntento.stop();
     }
 }
-
-// Escuchar tanto mouse como touch
-btnGrabarIntento.addEventListener("mousedown", iniciarGrabacionIntento);
-btnGrabarIntento.addEventListener("mouseup", detenerGrabacionIntento);
-btnGrabarIntento.addEventListener("touchstart", iniciarGrabacionIntento);
-btnGrabarIntento.addEventListener("touchend", detenerGrabacionIntento);
-
-function procesarGrabacionIntento() {
-    if (audioChunksIntento.length === 0) return;
-    const blob = new Blob(audioChunksIntento, { type: "audio/webm" });
-    audioChunksIntento = [];
-    const formData = new FormData();
-    formData.append("file", blob, "intento.webm");
-    mensajeValidacion.innerText = "⏳ Procesando tu repetición, espera un momento...";
-    btnGrabarIntento.style.display = "none";
-
-    fetch("/voz", { method: "POST", body: formData })
-        .then(res => res.json())
-        .then(data => {
-            const respuestaCorrecta = btnGrabarIntento.dataset.respuesta || btnGrabarIntento.dataset.oracion || "";
-            if (data.texto) validarIntento(respuestaCorrecta, data.texto);
-            else {
-                mensajeValidacion.innerText = "❌ No pude entender lo que dijiste.";
-                btnGrabarIntento.style.display = "block";
-            }
-        })
-        .catch(() => {
-            mensajeValidacion.innerText = "❌ Hubo un error al procesar tu repetición.";
-            btnGrabarIntento.style.display = "block";
-        });
-      function volverAPalabras() {
-        document.getElementById("mensajeFinal").innerHTML =
-        "🎉 ¡Excelente! Ahora vamos otra vez con las palabras.";
-        document.getElementById("seccionOraciones").style.display = "none";
-        document.getElementById("seccionPalabras").style.display = "block";
-    }
-
-}
-
 </script>
 </body>
-
 </html>
+
 
 
 
