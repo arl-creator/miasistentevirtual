@@ -532,59 +532,51 @@ function mostrarImagenes(urls) {
         imagenesContenedor.appendChild(img);
     });
 }
+  
+// --- NUEVA LÓGICA DE GRABAR INTENTO (1 toque para iniciar, 1 toque para parar) ---
+btnGrabarIntento.addEventListener("click", async () => {
+  // Si ya estamos grabando, detenemos
+  if (mediaRecorderIntento && mediaRecorderIntento.state === "recording") {
+    mediaRecorderIntento.stop();
+    btnGrabarIntento.style.background = "var(--secondary)"; // Vuelve a su color normal
+    btnGrabarIntento.innerText = "🎤 Graba para repetir";
+    return;
+  }
 
-btnGrabarIntento.addEventListener("pointerdown", () => {
-  audioChunksIntento = [];
-
-  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-
+  // Si no estamos grabando, iniciamos
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
     const mimeTypeIntento = isSafari ? "audio/mp4" : "audio/webm";
 
     mediaRecorderIntento = new MediaRecorder(stream, { mimeType: mimeTypeIntento });
+    audioChunksIntento = [];
 
     mediaRecorderIntento.ondataavailable = e => audioChunksIntento.push(e.data);
 
     mediaRecorderIntento.onstop = async () => {
-
-      if (audioChunksIntento.length === 0) {
-        console.log("Audio vacío");
-        return;
-      }
-    
+      if (audioChunksIntento.length === 0) return;
+      
       await new Promise(resolve => setTimeout(resolve, 200));
-    
       const blob = new Blob(audioChunksIntento, { type: mimeTypeIntento });
-    
-      if (blob.size === 0) {
-        console.log("Blob vacío");
-        return;
-      }
-    
+      
+      if (blob.size === 0) return;
+      
       const nombre = isSafari ? "intento.mp4" : "intento.webm";
       enviarIntento(blob, nombre);
     };
-    
-        mediaRecorderIntento.start();
-        mensajeValidacion.innerText = "🎙️ Habla ahora...";
-      });
-    });
 
-btnGrabarIntento.addEventListener("pointerup", () => {
-  if (mediaRecorderIntento?.state === "recording") {
-    mediaRecorderIntento.stop();
+    mediaRecorderIntento.start();
+    btnGrabarIntento.style.background = "red"; // Se pone rojo para que el niño sepa que graba
+    btnGrabarIntento.innerText = "⏹️ Toca para detener";
+    mensajeValidacion.innerText = "🎙️ Habla ahora...";
+    
+  } catch (err) {
+    mensajeValidacion.innerText = "❌ Permite el uso del micrófono";
   }
 });
   
-btnGrabarIntento.addEventListener("touchstart", (e) => {
-  e.preventDefault();
-  btnGrabarIntento.dispatchEvent(new Event("pointerdown"));
-});
-
-btnGrabarIntento.addEventListener("touchend", (e) => {
-  e.preventDefault();
-  btnGrabarIntento.dispatchEvent(new Event("pointerup"));
-});
 
 function enviarIntento(blob, nombre) {
   const formData = new FormData();
@@ -780,6 +772,7 @@ function volverAPalabras() {
 </script>
 </body>
 </html>
+
 
 
 
