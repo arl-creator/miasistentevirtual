@@ -9,6 +9,7 @@ import uuid
 import tempfile
 import json
 #import shutil
+import random
 
 # Configurar ffmpeg automáticamente si existe en el sistema
 #AudioSegment.converter = shutil.which("ffmpeg")
@@ -23,6 +24,7 @@ os.makedirs("static/audio", exist_ok=True)
 
 AUDIO_DIR = os.path.join("static", "audio")
 os.makedirs(AUDIO_DIR, exist_ok=True)
+
 
 # 2. TUS DATOS (Imágenes y Respuestas)
 imagenes_fijas = {
@@ -214,49 +216,63 @@ def oracion_vocal():
         palabra = resultado["palabra_clave"].strip()
         oracion = resultado["oracion"].strip()
 
-        # 🎵 Crear audio automáticamente
-        nombre_audio = f"oracion_{uuid.uuid4()}.mp3"
-        ruta_audio = os.path.join(AUDIO_DIR, nombre_audio)
-
-        tts = gTTS(oracion, lang="es")
-        tts.save(ruta_audio)
-
-        return jsonify({
-            "palabra_clave": palabra,
-            "oracion": oracion,
-            "audio_url": f"/static/audio/{nombre_audio}"
-        })
-
     except Exception as e:
-        print("Error generando oración:", e)
+        print("⚠️ Error con API, usando respaldo:", e)
 
-        return jsonify({
-            "palabra_clave": "Abeja",
-            "oracion": "La abeja vuela en el jardín.",
-            "audio_url": ""
-        })
+        PALABRAS_RESPALDO = {
+            "a": ["Abeja", "Avión", "Árbol", "Araña"],
+            "e": ["Elefante", "Escuela", "Estrella", "Espejo"],
+            "i": ["Iguana", "Isla", "Iglesia", "Imán"],
+            "o": ["Oso", "Oveja", "Ola", "Ojo"],
+            "u": ["Uva", "Unicornio", "Uniforme", "Uno"]
+        }
+
+        ORACIONES_RESPALDO = {
+            "a": ["La abeja vuela en el jardín.", "Ana ama a su gato."],
+            "e": ["El elefante es grande.", "Elena estudia en la escuela."],
+            "i": ["La iguana está en la isla.", "Isabel pinta un dibujo."],
+            "o": ["El oso come miel.", "Oscar juega fútbol."],
+            "u": ["La uva es dulce.", "La luna brilla en la noche."]
+        }
+
+        palabra = random.choice(PALABRAS_RESPALDO.get(vocal, ["Abeja"]))
+        oracion = random.choice(ORACIONES_RESPALDO.get(vocal, ["La casa es bonita."]))
+
+    # 🔊 Crear audio SIEMPRE (API o respaldo)
+    nombre_audio = f"oracion_{uuid.uuid4()}.mp3"
+    ruta_audio = os.path.join(AUDIO_DIR, nombre_audio)
+
+    tts = gTTS(oracion, lang="es")
+    tts.save(ruta_audio)
+
+    return jsonify({
+        "palabra_clave": palabra,
+        "oracion": oracion,
+        "audio_url": f"/static/audio/{nombre_audio}"
+    })
         
 
-@app.route("/palabras_vocales", methods=["GET"])
-def palabras_vocales():
-    vocales = ["a", "e", "i", "o", "u"]
-    palabras = []
+#@app.route(/palabras_vocales/<vocal>", methods=["GET"])
+#def palabras_vocales():
+ #   vocales = ["a", "e", "i", "o", "u"]
+  #  palabras = []
+#
+ #   for vocal in vocales:
+  #      palabra = generar_palabra_aleatoria(vocal)  # tu función IA
+   #     palabras.append(palabra)
 
-    for vocal in vocales:
-        palabra = generar_palabra_aleatoria(vocal)  # tu función IA
-        palabras.append(palabra)
-
-    return jsonify({"palabras": palabras})
+    #return jsonify({"palabras": palabras})
     
-def generar_palabra_aleatoria(vocal):
-    prompt = f"""
-    Dame una palabra infantil sencilla que empiece con la letra {vocal}.
-    Responde SOLO la palabra.
-    """
+@app.route("/palabras_vocales/<vocal>", methods=["GET"])
+def palabras_vocales(vocal):
+
+    vocal = vocal.lower()
 
     try:
+        prompt = f"Dame una palabra infantil sencilla que empiece con la letra {vocal}. Responde SOLO la palabra."
+
         response = openai.ChatCompletion.create(
-            model="deepseek-chat",  # 👈 sigues usando DeepSeek
+            model="deepseek-chat",
             messages=[
                 {"role": "system", "content": "Responde solo una palabra infantil."},
                 {"role": "user", "content": prompt}
@@ -266,25 +282,23 @@ def generar_palabra_aleatoria(vocal):
         )
 
         palabra = response['choices'][0]['message']['content'].strip()
-
-        # limpieza por si responde algo extra
         palabra = palabra.replace('"', '').replace('.', '').split()[0]
-
-        return palabra.capitalize()
+        palabra = palabra.capitalize()
 
     except Exception as e:
-        print("Error generando palabra:", e)
+        print("⚠️ Error con API, usando respaldo:", e)
 
-        # respaldo si falla DeepSeek
-        ejemplos = {
-            "a": "Abeja",
-            "e": "Elefante",
-            "i": "Isla",
-            "o": "Oso",
-            "u": "Uva"
+        PALABRAS_RESPALDO = {
+            "a": ["Abeja", "Avión", "Árbol", "Araña"],
+            "e": ["Elefante", "Escuela", "Estrella", "Espejo"],
+            "i": ["Iguana", "Isla", "Iglesia", "Imán"],
+            "o": ["Oso", "Oveja", "Ola", "Ojo"],
+            "u": ["Uva", "Unicornio", "Uniforme", "Uno"]
         }
 
-        return ejemplos.get(vocal.lower(), "Abeja")
+        palabra = random.choice(PALABRAS_RESPALDO.get(vocal, ["Abeja"]))
+
+    return jsonify({"palabra": palabra})
 
         
 @app.route("/tts", methods=["POST"])
