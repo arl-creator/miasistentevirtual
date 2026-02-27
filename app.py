@@ -111,7 +111,7 @@ def voz():
             file.save(temp_input.name)
 
         # Convertir con formato detectado
-        audio = AudioSegment.from_file(temp_input.name, format="webm")
+        audio = AudioSegment.from_file(temp_input.name)
         temp_wav_path = temp_input.name + ".wav"
         audio.export(temp_wav_path, format="wav")
 
@@ -313,6 +313,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
