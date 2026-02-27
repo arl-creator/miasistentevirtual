@@ -534,46 +534,65 @@ function mostrarImagenes(urls) {
 }
   
 // --- NUEVA LÓGICA DE GRABAR INTENTO (1 toque para iniciar, 1 toque para parar) ---
+// --- NUEVA LÓGICA DE GRABAR INTENTO (Súper compatible con iPhone) ---
 btnGrabarIntento.addEventListener("click", async () => {
-  // Si ya estamos grabando, detenemos
+  // 1. SI YA ESTÁ GRABANDO -> DETENER
   if (mediaRecorderIntento && mediaRecorderIntento.state === "recording") {
     mediaRecorderIntento.stop();
-    btnGrabarIntento.style.background = "var(--secondary)"; // Vuelve a su color normal
+    btnGrabarIntento.style.background = "var(--secondary)"; 
     btnGrabarIntento.innerText = "🎤 Graba para repetir";
+    mensajeValidacion.innerText = "⏳ Procesando tu voz..."; // Cambio visual instantáneo
     return;
   }
 
-  // Si no estamos grabando, iniciamos
+  // 2. SI NO ESTÁ GRABANDO -> INICIAR
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const mimeTypeIntento = isSafari ? "audio/mp4" : "audio/webm";
+    // Dejamos que el navegador decida su mejor formato automáticamente
+    let opciones = {};
+    if (MediaRecorder.isTypeSupported('audio/webm')) {
+        opciones = { mimeType: 'audio/webm' };
+    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        opciones = { mimeType: 'audio/mp4' };
+    }
 
-    mediaRecorderIntento = new MediaRecorder(stream, { mimeType: mimeTypeIntento });
+    mediaRecorderIntento = new MediaRecorder(stream, opciones);
     audioChunksIntento = [];
 
-    mediaRecorderIntento.ondataavailable = e => audioChunksIntento.push(e.data);
+    // Juntar los pedacitos de audio
+    mediaRecorderIntento.ondataavailable = e => {
+      if (e.data && e.data.size > 0) {
+        audioChunksIntento.push(e.data);
+      }
+    };
 
+    // Cuando detenemos la grabación
     mediaRecorderIntento.onstop = async () => {
-      if (audioChunksIntento.length === 0) return;
+      // Apagar el micrófono (quita el puntito naranja de la pantalla)
+      stream.getTracks().forEach(track => track.stop());
+
+      if (audioChunksIntento.length === 0) {
+        mensajeValidacion.innerText = "⚠️ No te escuché, intenta de nuevo.";
+        return;
+      }
       
-      await new Promise(resolve => setTimeout(resolve, 200));
-      const blob = new Blob(audioChunksIntento, { type: mimeTypeIntento });
+      const tipo = opciones.mimeType || 'audio/mp4';
+      const blob = new Blob(audioChunksIntento, { type: tipo });
+      const nombre = tipo.includes('webm') ? "intento.webm" : "intento.mp4";
       
-      if (blob.size === 0) return;
-      
-      const nombre = isSafari ? "intento.mp4" : "intento.webm";
+      // Enviar al servidor
       enviarIntento(blob, nombre);
     };
 
+    // Iniciar
     mediaRecorderIntento.start();
-    btnGrabarIntento.style.background = "red"; // Se pone rojo para que el niño sepa que graba
+    btnGrabarIntento.style.background = "red"; 
     btnGrabarIntento.innerText = "⏹️ Toca para detener";
     mensajeValidacion.innerText = "🎙️ Habla ahora...";
     
   } catch (err) {
-    mensajeValidacion.innerText = "❌ Permite el uso del micrófono";
+    mensajeValidacion.innerText = "❌ Necesitas dar permiso al micrófono";
   }
 });
   
@@ -772,6 +791,7 @@ function volverAPalabras() {
 </script>
 </body>
 </html>
+
 
 
 
