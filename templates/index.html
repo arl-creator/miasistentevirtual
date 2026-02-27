@@ -742,9 +742,44 @@ function detenerGrabacionIntento() {
     if (mediaRecorderIntento && mediaRecorderIntento.state === "recording") {
         mediaRecorderIntento.stop();
     }
+} // 🔥 ¡ESTA ES LA LLAVE QUE FALTABA! 🔥
+
+// --- FUNCIÓN PARA VOLVER AL MENÚ DE EJERCICIOS ---
+function volverAPalabras() {
+    respuestaElemento.innerText = "🎙️ ¡Presiona el micrófono para hablar!";
+    mensajeValidacion.innerText = "";
+    btnGrabarIntento.style.display = "none";
+    
+    // Restaurar el menú original
+    contenedorEjercicios.innerHTML = `
+        <button id="btn-frases">🗣️ Practicar Palabras (A, E, I, O, U)</button>
+        <button id="btn-oraciones">🔠 Practicar Oraciones</button>
+    `;
+
+    // Volver a asignar los eventos a los botones nuevos
+    document.getElementById("btn-frases").addEventListener("click", async () => {
+        respuestaElemento.innerText = "🎲 Generando palabras...";
+        const res = await fetch("/palabras_vocales");
+        const data = await res.json();
+        if (data.palabras && data.palabras.length > 0) {
+            iniciarSecuenciaPalabras(data.palabras);
+        }
+    });
+
+    document.getElementById("btn-oraciones").addEventListener("click", () => {
+        respuestaElemento.innerText = "🔠 Elige una vocal para practicar:";
+        contenedorEjercicios.innerHTML = `
+            <button onclick="iniciarEjercicioVocal('a')">A</button>
+            <button onclick="iniciarEjercicioVocal('e')">E</button>
+            <button onclick="iniciarEjercicioVocal('i')">I</button>
+            <button onclick="iniciarEjercicioVocal('o')">O</button>
+            <button onclick="iniciarEjercicioVocal('u')">U</button>
+        `;
+    });
 }
 </script>
 </body>
 </html>
+
 
 
