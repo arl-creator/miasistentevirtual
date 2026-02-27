@@ -111,7 +111,7 @@ def voz():
             file.save(temp_input.name)
 
         # Convertir con formato detectado
-        audio = AudioSegment.from_file(temp_input.name)
+        audio = AudioSegment.from_file(temp_input.name, format="webm")
         temp_wav_path = temp_input.name + ".wav"
         audio.export(temp_wav_path, format="wav")
 
@@ -138,9 +138,9 @@ def voz():
 
     finally:
         try:
-            if os.path.exists(temp_input.name):
+            if 'temp_input' in locals() and os.path.exists(temp_input.name):
                 os.remove(temp_input.name)
-            if os.path.exists(temp_wav_path):
+            if 'temp_wav_path' in locals() and os.path.exists(temp_wav_path):
                 os.remove(temp_wav_path)
         except:
             pass
@@ -313,6 +313,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
