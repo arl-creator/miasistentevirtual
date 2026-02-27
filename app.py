@@ -109,6 +109,9 @@ def voz():
 
     recognizer = sr.Recognizer()
 
+    input_path = None
+    wav_path = None
+
     try:
         if "file" not in request.files:
             return jsonify({"texto": ""})
@@ -128,7 +131,7 @@ def voz():
         wav_path = input_path + ".wav"
         audio.export(wav_path, format="wav")
 
-        # Leer WAV con SpeechRecognition
+        # Leer WAV
         with sr.AudioFile(wav_path) as source:
             audio_data = recognizer.record(source)
 
@@ -136,40 +139,92 @@ def voz():
 
         print("Texto reconocido:", texto)
 
-        # Limpiar archivos
-        os.remove(input_path)
-        os.remove(wav_path)
-
         return jsonify({"texto": texto})
 
     except Exception as e:
         print("Error en voz:", repr(e))
         return jsonify({"texto": ""})
+
+    finally:
+        # Limpieza segura
+        try:
+            if input_path and os.path.exists(input_path):
+                os.remove(input_path)
+            if wav_path and os.path.exists(wav_path):
+                os.remove(wav_path)
+        except:
+            pass
         
 
 @app.route("/validar", methods=["POST"])
 def validar():
+    from difflib import SequenceMatcher
+
     data = request.json
-    intento = data.get("intento", "").lower()
-    correcta = data.get("respuesta", "").lower()
-    
-    prompt = "Eres un foniatra para niños. Si el niño dijo algo parecido a la respuesta, responde 'Muy bien'. Si no, anímalo."
+    intento = data.get("intento", "").lower().strip()
+    correcta = data.get("respuesta", "").lower().strip()
+
+    mensaje = ""
+    correcto = False
+
+    # 🔵 1️⃣ INTENTAR USAR API PRIMERO
     try:
+        prompt = "Eres un foniatra para niños. Si el niño dijo algo parecido a la respuesta, responde solo 'Muy bien'. Si no, anímalo."
+
         res = openai.ChatCompletion.create(
             model="deepseek-chat",
-            messages=[{"role": "system", "content": prompt}, {"role": "user", "content": f"Correcta: {correcta}. Niño dijo: {intento}"}],
-            temperature=0.3
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": f"Correcta: {correcta}. Niño dijo: {intento}"}
+            ],
+            temperature=0.2
         )
-        mensaje = res['choices'][0]['message']['content'].strip()
-    except:
-        mensaje = "¡Muy bien hecho!"
 
+        mensaje = res['choices'][0]['message']['content'].strip()
+        correcto = "muy bien" in mensaje.lower()
+
+        print("✅ Validación hecha con API")
+
+    except Exception as e:
+        print("⚠️ API falló, usando validación local:", e)
+
+        # 🟢 2️⃣ SI FALLA LA API → VALIDACIÓN LOCAL
+
+        # 🔸 CASO ESPECIAL VOCALes
+        if "a, e, i, o, u" in correcta or "las vocales son" in correcta:
+            intento_limpio = intento.replace(",", "").replace(".", "")
+            letras_dichas = intento_limpio.split()
+
+            vocales_correctas = ["a", "e", "i", "o", "u"]
+            aciertos = sum(1 for v in vocales_correctas if v in letras_dichas)
+
+            if aciertos >= 4:
+                mensaje = "¡Muy bien! Dijiste las vocales."
+                correcto = True
+            else:
+                mensaje = "Intenta decir A, E, I, O, U."
+                correcto = False
+
+        else:
+            # 🔸 Validación normal por similitud
+            similitud = SequenceMatcher(None, intento, correcta).ratio()
+
+            if similitud > 0.6:
+                mensaje = "¡Muy bien hecho!"
+                correcto = True
+            else:
+                mensaje = "Casi lo logras, intenta otra vez."
+                correcto = False
+
+    # 🔊 Crear audio SIEMPRE
     audio_name = f"val_{uuid.uuid4()}.mp3"
-    gTTS(mensaje, lang="es").save(os.path.join("static/audio", audio_name))
-    
-    # Lógica de éxito para el frontend
-    exito = any(palabra in mensaje.lower() for palabra in ["muy bien", "perfecto", "excelente", "correcto"])
-    return jsonify({"mensaje": mensaje, "audio_url": f"/static/audio/{audio_name}", "correcto": exito})
+    gTTS(mensaje, lang="es").save(os.path.join(AUDIO_DIR, audio_name))
+
+    return jsonify({
+        "mensaje": mensaje,
+        "audio_url": f"/static/audio/{audio_name}",
+        "correcto": correcto
+    })
     
 # nuevoooooooo
 
@@ -251,23 +306,7 @@ def oracion_vocal():
         "audio_url": f"/static/audio/{nombre_audio}"
     })
         
-
-#@app.route(/palabras_vocales/<vocal>", methods=["GET"])
-#def palabras_vocales():
- #   vocales = ["a", "e", "i", "o", "u"]
-  #  palabras = []
-#
- #   for vocal in vocales:
-  #      palabra = generar_palabra_aleatoria(vocal)  # tu función IA
-   #     palabras.append(palabra)
-
-    #return jsonify({"palabras": palabras})
-    
-@app.route("/palabras_vocales/<vocal>", methods=["GET"])
-def palabras_vocales(vocal):
-
-    vocal = vocal.lower()
-
+def generar_palabra_aleatoria(vocal):
     try:
         prompt = f"Dame una palabra infantil sencilla que empiece con la letra {vocal}. Responde SOLO la palabra."
 
@@ -283,7 +322,7 @@ def palabras_vocales(vocal):
 
         palabra = response['choices'][0]['message']['content'].strip()
         palabra = palabra.replace('"', '').replace('.', '').split()[0]
-        palabra = palabra.capitalize()
+        return palabra.capitalize()
 
     except Exception as e:
         print("⚠️ Error con API, usando respaldo:", e)
@@ -296,9 +335,29 @@ def palabras_vocales(vocal):
             "u": ["Uva", "Unicornio", "Uniforme", "Uno"]
         }
 
-        palabra = random.choice(PALABRAS_RESPALDO.get(vocal, ["Abeja"]))
+        return random.choice(PALABRAS_RESPALDO.get(vocal.lower(), ["Abeja"]))
+        
+#@app.route(/palabras_vocales/<vocal>", methods=["GET"])
+#def palabras_vocales():
+ #   vocales = ["a", "e", "i", "o", "u"]
+  #  palabras = []
+#
+ #   for vocal in vocales:
+  #      palabra = generar_palabra_aleatoria(vocal)  # tu función IA
+   #     palabras.append(palabra)
 
-    return jsonify({"palabra": palabra})
+    #return jsonify({"palabras": palabras})
+    
+@app.route("/palabras_vocales", methods=["GET"])
+def palabras_vocales():
+    vocales = ["a", "e", "i", "o", "u"]
+    palabras = []
+
+    for v in vocales:
+        palabra = generar_palabra_aleatoria(v)
+        palabras.append(palabra)
+
+    return jsonify({"palabras": palabras})
 
         
 @app.route("/tts", methods=["POST"])
@@ -326,6 +385,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
