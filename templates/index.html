@@ -82,13 +82,14 @@
     }
 
     #imagenes-respuesta img {
-      width: clamp(100px, 28vw, 160px); 
-      height: clamp(100px, 28vw, 160px);
-      object-fit: cover;
-      border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      /* Aumentamos el tamaño ideal de las imágenes */
+      width: clamp(120px, 40vw, 180px); 
+      height: clamp(120px, 40vw, 180px);
+      object-fit: contain; /* Cambiado a contain para que no se corte el dibujo */
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       background: white;
-      padding: 5px;
+      padding: 2px; /* Reducido al mínimo para que el dibujo sea el protagonista */
     }
 
     .boton-microfono {
@@ -469,7 +470,7 @@ function iniciarEjercicioVocal(vocal) {
   btnGrabarIntento.style.display = "none";
   mensajeValidacion.innerText = "Generando oración...";
 
-   fetch("/oracion_vocal", {
+  fetch("/oracion_vocal", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ vocal })
@@ -485,10 +486,12 @@ function iniciarEjercicioVocal(vocal) {
     const oracion = data.oracion;
     const palabraClave = data.palabra_clave;
 
-    respuestaElemento.innerText = `🧠 La palabra es: ${palabraClave}. Escucha y repite: "${oracion}"`;
+    // Actualizamos el texto visual
+    respuestaElemento.innerText = `🧠 La palabra es: ${palabraClave}. Escucha la frase: "${oracion}"`;
     
-    // 🔊 AQUÍ DICE "Ahora dilo tú" para las oraciones largas
-    const textoAIntroducir = `La palabra clave es ${palabraClave}. Escucha la oración para la letra ${vocal}: ${oracion}. Ahora dilo tú.`;
+    // 🔊 NUEVA ESTRUCTURA DE VOZ:
+    // "La palabra es UVA. Escucha la frase: La uva es dulce. Ahora dilo tú."
+    const textoAIntroducir = `La palabra es ${palabraClave}. Escucha la frase: ${oracion}. Ahora dilo tú.`;
 
     fetch("/tts", {
       method: "POST",
@@ -510,7 +513,7 @@ function iniciarEjercicioVocal(vocal) {
       };
     });
   });
- }
+}
 
 // --- 4. NUEVO BOTÓN DE GRABAR INTENTO (COMPATIBLE IPHONE) ---
 btnGrabarIntento.addEventListener("click", async () => {
@@ -694,11 +697,11 @@ function volverAPalabras() {
             <button onclick="iniciarEjercicioVocal('i')">I</button>
             <button onclick="iniciarEjercicioVocal('o')">O</button>
             <button onclick="iniciarEjercicioVocal('u')">U</button>
-            <button onclick="volverAPalabras()" style="background:var(--secondary); color:white;">Volver</button>
         `;
     });
 }
 </script>
 </body>
 </html>
+
 
