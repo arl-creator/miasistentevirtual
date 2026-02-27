@@ -242,38 +242,49 @@ if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
 
 
   // --- NUEVA LÓGICA DE GRABACIÓN DIRECTA ---
-botonMicrofono.addEventListener("click", async () => {
-  // Si ya estamos grabando, detenemos
-  if (mediaRecorder && mediaRecorder.state === "recording") {
-    mediaRecorder.stop();
-    botonMicrofono.style.background = "var(--primary)"; // Vuelve a color amarillo
+// --- NUEVO BOTÓN DE GRABAR INTENTO (COMPATIBLE IPHONE) ---
+btnGrabarIntento.addEventListener("click", async () => {
+  if (mediaRecorderIntento && mediaRecorderIntento.state === "recording") {
+    mediaRecorderIntento.stop();
+    btnGrabarIntento.style.background = "var(--secondary)"; 
+    btnGrabarIntento.innerText = "🎤 Graba para repetir";
+    mensajeValidacion.innerText = "⏳ Procesando tu voz..."; 
     return;
   }
 
-  // Si no estamos grabando, iniciamos
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     
-    // Detectamos si es iPhone para el formato de audio
+    // 🔥 OBLIGAMOS a Safari (iPhone/Mac) a usar mp4 para que no rompa el archivo
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const mimeType = isSafari ? 'audio/mp4' : 'audio/webm';
-    
-    mediaRecorder = new MediaRecorder(stream, { mimeType });
-    audioChunks = [];
+    const mimeTypeIntento = isSafari ? 'audio/mp4' : 'audio/webm';
 
-    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-    
-    mediaRecorder.onstop = () => {
-      const blob = new Blob(audioChunks, { type: mimeType });
-      const ext = isSafari ? 'mp4' : 'webm';
-      enviarAudio(blob, `grabacion.${ext}`);
+    mediaRecorderIntento = new MediaRecorder(stream, { mimeType: mimeTypeIntento });
+    audioChunksIntento = [];
+
+    mediaRecorderIntento.ondataavailable = e => {
+      if (e.data && e.data.size > 0) audioChunksIntento.push(e.data);
     };
 
-    mediaRecorder.start();
-    botonMicrofono.style.background = "red"; // Cambia a rojo grabando
-    respuestaElemento.innerText = "🎙️ Escuchando... Presiona de nuevo para parar";
+    mediaRecorderIntento.onstop = async () => {
+      stream.getTracks().forEach(track => track.stop()); // Apaga el micrófono
+      
+      if (audioChunksIntento.length === 0) {
+        mensajeValidacion.innerText = "⚠️ No te escuché, intenta de nuevo.";
+        return;
+      }
+      
+      const blob = new Blob(audioChunksIntento, { type: mimeTypeIntento });
+      const nombre = isSafari ? "intento.mp4" : "intento.webm";
+      enviarIntento(blob, nombre);
+    };
+
+    mediaRecorderIntento.start();
+    btnGrabarIntento.style.background = "red"; 
+    btnGrabarIntento.innerText = "⏹️ Toca para detener";
+    mensajeValidacion.innerText = "🎙️ Habla ahora...";
   } catch (err) {
-    respuestaElemento.innerText = "❌ Permite el uso del micrófono";
+    mensajeValidacion.innerText = "❌ Necesitas dar permiso al micrófono";
   }
 });
 
@@ -791,6 +802,7 @@ function volverAPalabras() {
 </script>
 </body>
 </html>
+
 
 
 
