@@ -25,16 +25,23 @@
       align-items: center;
       justify-content: space-between;
       min-height: 100vh;
-      padding: 20px;
-      overflow: hidden;
+      padding: 20px 10px; /* Menos padding lateral en móviles */
+      overflow-x: hidden; /* Evita que la pantalla se mueva a los lados */
       position: relative;
     }
 
-    header { text-align: center; margin-bottom: 10px; z-index: 2; }
+    header { text-align: center; margin-bottom: 10px; z-index: 2; width: 100%; }
+    
     header h1 {
-      font-size: 3rem;
+      font-size: clamp(2.2rem, 6vw, 3rem); /* Se adapta solo de 2.2rem a 3rem */
       color: var(--secondary);
       text-shadow: 2px 2px rgba(0,0,0,0.1);
+      line-height: 1.2;
+    }
+    
+    header p { 
+      font-size: clamp(1rem, 3vw, 1.2rem); 
+      color: var(--text-dark); 
     }
 
     main {
@@ -44,17 +51,19 @@
       align-items: center;
       justify-content: center;
       width: 100%;
+      max-width: 800px; /* Evita que sea gigante en pantallas de Mac/PC */
       position: relative;
       z-index: 2;
     }
 
     #respuesta {
-      font-size: 1.8rem;
+      font-size: clamp(1.2rem, 4vw, 1.8rem);
       color: var(--text-dark);
-      background-color: #fff;
+      background-color: rgba(255, 255, 255, 0.95);
       padding: 15px 20px;
       border-radius: 20px;
-      max-width: 90%;
+      width: 95%;
+      max-width: 600px;
       text-align: center;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       margin-bottom: 20px;
@@ -65,15 +74,17 @@
     #imagenes-respuesta {
       display: flex;
       gap: 10px;
-      flex-wrap: wrap;
+      flex-wrap: wrap; /* Si las imágenes no caben, bajan a la siguiente línea */
       justify-content: center;
       margin-bottom: 20px;
       z-index: 2;
+      width: 100%;
     }
 
     #imagenes-respuesta img {
-      width: 160px;
-      height: 160px;
+      width: clamp(100px, 28vw, 160px); 
+      height: clamp(100px, 28vw, 160px);
+      object-fit: cover;
       border-radius: 10px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.2);
       background: white;
@@ -82,9 +93,9 @@
 
     .boton-microfono {
       background: var(--primary);
-      border: 8px solid var(--secondary);
-      width: 120px;
-      height: 120px;
+      border: clamp(4px, 1.5vw, 8px) solid var(--secondary);
+      width: clamp(90px, 25vw, 120px); 
+      height: clamp(90px, 25vw, 120px);
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -92,14 +103,17 @@
       cursor: pointer;
       box-shadow: 0 8px 20px rgba(0,0,0,0.2);
       z-index: 2;
+      transition: transform 0.1s ease;
     }
-
-    .boton-microfono img { width: 60px; height: 60px; }
+    
+    .boton-microfono:active { transform: scale(0.95); } /* Efecto al presionar */
+    
+    .boton-microfono img { width: 50%; height: 50%; } /* Escala el ícono dentro del botón */
 
     #btn-grabar-intento {
       margin-top: 15px;
       padding: 10px 20px;
-      font-size: 1.2rem;
+      font-size: clamp(1rem, 3vw, 1.2rem);
       border: none;
       border-radius: 12px;
       background: var(--secondary);
@@ -107,69 +121,71 @@
       font-family: 'Baloo 2', cursive;
       cursor: pointer;
       display: none;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
 
     #mensaje-validacion {
       margin-top: 15px;
-      font-size: 1.3rem;
+      font-size: clamp(1rem, 4vw, 1.3rem);
       text-align: center;
       color: var(--text-dark);
       font-weight: bold;
+      width: 90%;
+      max-width: 600px;
     }
 
-    footer { margin-top: 10px; font-size: 1rem; color: var(--text-dark); z-index: 2; }
-
-    /* Nubes */
-    .nube-fondo {
-      position: absolute;
-      width: 150px;
-      opacity: 0.3;
-      animation: moverNube 25s linear infinite;
-      z-index: 0;
+    /* Ajustes para que los botones de ejercicios se adapten bien */
+    #contenedor-ejercicios {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      max-width: 600px;
     }
+    
+    #contenedor-ejercicios button {
+      margin: 0; /* Quitado el margen duro, usamos 'gap' arriba */
+      padding: 12px 15px;
+      font-size: clamp(0.9rem, 3vw, 1.2rem);
+      border: none;
+      border-radius: 12px;
+      background: white;
+      color: var(--text-dark);
+      font-family: 'Baloo 2', cursive;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      flex: 1 1 auto; /* Permite que los botones crezcan o se encojan juntos */
+      min-width: 110px; /* Evita que se hagan demasiado delgados */
+    }
+
+    footer { margin-top: 10px; font-size: clamp(0.8rem, 2vw, 1rem); color: var(--text-dark); z-index: 2; text-align: center; }
+
+    /* --- DECORACIONES DE FONDO --- */
+    /* pointer-events: none hace que los clicks pasen a través de ellos hacia los botones */
+    
+    .nube-fondo { position: absolute; opacity: 0.3; animation: moverNube 25s linear infinite; z-index: 0; width: clamp(80px, 20vw, 150px); pointer-events: none; }
     .nube1 { top: 10%; left: -20%; }
     .nube2 { top: 50%; left: -25%; animation-duration: 30s; }
+    @keyframes moverNube { 0% { transform: translateX(0); } 100% { transform: translateX(150vw); } }
 
-    @keyframes moverNube {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(150vw); }
-    }
-    /* Personajes laterales */
-    .personaje-lateral {
-      position: absolute;
-      width: 120px;
-      animation: saltar 2s infinite alternate ease-in-out;
-      z-index: 1;
-    }
-    .izq1 { bottom: 10%; left: 2%; }
-    .izq2 { top: 10%; left: 2%; }
-    .der1 { bottom: 10%; right: 2%; }
-    .der2 { top: 10%; right: 2%; }
+    .personaje-lateral { position: absolute; width: clamp(50px, 15vw, 120px); animation: saltar 2s infinite alternate ease-in-out; z-index: 0; pointer-events: none; }
+    .izq1 { bottom: 5%; left: 2%; }
+    .izq2 { top: 15%; left: 2%; }
+    .der1 { bottom: 5%; right: 2%; }
+    .der2 { top: 15%; right: 2%; }
+    @keyframes saltar { 0% { transform: translateY(0); } 100% { transform: translateY(-15px); } }
 
-    @keyframes saltar {
-      0% { transform: translateY(0); }
-      100% { transform: translateY(-15px); }
-    }
-    /* Globos flotando */
-    .globo {
-      position: absolute;
-      width: 60px;
-      animation: flotar 6s ease-in-out infinite;
-      z-index: 0;
-    }
+    .globo { position: absolute; width: clamp(35px, 10vw, 60px); animation: flotar 6s ease-in-out infinite; z-index: 0; pointer-events: none; }
     .globo1 { left: 10%; bottom: -80px; animation-delay: 0s; }
     .globo2 { left: 50%; bottom: -100px; animation-delay: 2s; }
     .globo3 { right: 10%; bottom: -120px; animation-delay: 4s; }
+    @keyframes flotar { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-120vh) scale(1.2); opacity: 0; } }
 
-    @keyframes flotar {
-      0% { transform: translateY(0) scale(1); opacity: 1; }
-      100% { transform: translateY(-120vh) scale(1.2); opacity: 0; }
-    }
-    #contenedor-ejercicios button {
-      margin: 8px;
-      padding: 12px 20px;
-      font-size: 1.2rem;
-      border-radius: 12px;
+    /* Regla especial: En celulares muy pequeños, los personajes se hacen más transparentes para no estorbar visualmente */
+    @media (max-width: 500px) {
+      .personaje-lateral { opacity: 0.4; }
+      .izq2, .der2 { top: 5%; } /* Subimos a los personajes superiores para que no tapen el texto */
     }
   </style>
 </head>
@@ -682,3 +698,7 @@ function volverAPalabras() {
         `;
     });
 }
+</script>
+</body>
+</html>
+
