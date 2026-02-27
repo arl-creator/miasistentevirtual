@@ -99,9 +99,11 @@ def preguntar():
 
 @app.route("/voz", methods=["POST"])
 def voz():
-    import subprocess
     import tempfile
     import os
+    from pydub import AudioSegment
+    import speech_recognition as sr
+    import imageio_ffmpeg
 
     recognizer = sr.Recognizer()
 
@@ -111,26 +113,21 @@ def voz():
 
         file = request.files["file"]
 
-        # Guardar audio original
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".input") as temp_input:
+        # Guardar archivo original
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_input:
             file.save(temp_input.name)
             input_path = temp_input.name
 
-        # Crear archivo WAV temporal
-        output_path = input_path + ".wav"
+        # Configurar ffmpeg interno
+        AudioSegment.converter = imageio_ffmpeg.get_ffmpeg_exe()
 
-        # Convertir a WAV usando ffmpeg
-        subprocess.run([
-            "ffmpeg",
-            "-y",
-            "-i", input_path,
-            "-ar", "16000",
-            "-ac", "1",
-            output_path
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Convertir a WAV
+        audio = AudioSegment.from_file(input_path)
+        wav_path = input_path + ".wav"
+        audio.export(wav_path, format="wav")
 
-        # Leer WAV convertido
-        with sr.AudioFile(output_path) as source:
+        # Leer WAV con SpeechRecognition
+        with sr.AudioFile(wav_path) as source:
             audio_data = recognizer.record(source)
 
         texto = recognizer.recognize_google(audio_data, language="es-ES")
@@ -139,12 +136,12 @@ def voz():
 
         # Limpiar archivos
         os.remove(input_path)
-        os.remove(output_path)
+        os.remove(wav_path)
 
         return jsonify({"texto": texto})
 
     except Exception as e:
-        print("Error en voz:", e)
+        print("Error en voz:", repr(e))
         return jsonify({"texto": ""})
         
 
@@ -315,33 +312,6 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
