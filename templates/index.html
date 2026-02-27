@@ -456,6 +456,7 @@ function iniciarEjercicioVocal(vocal) {
  }
 
 // --- 4. NUEVO BOTÓN DE GRABAR INTENTO (COMPATIBLE IPHONE) ---
+// --- 4. NUEVO BOTÓN DE GRABAR INTENTO (COMPATIBLE IPHONE) ---
 btnGrabarIntento.addEventListener("click", async () => {
   if (mediaRecorderIntento && mediaRecorderIntento.state === "recording") {
     mediaRecorderIntento.stop();
@@ -474,21 +475,22 @@ btnGrabarIntento.addEventListener("click", async () => {
     mediaRecorderIntento = new MediaRecorder(stream, { mimeType: mimeTypeIntento });
     audioChunksIntento = [];
 
+    // 🔥 AQUÍ ESTÁ LA MAGIA: Ya no le preguntamos al iPhone cuánto pesa, 
+    // simplemente guardamos el audio directo igual que en el micro principal.
     mediaRecorderIntento.ondataavailable = e => {
-      if (e.data && e.data.size > 0) audioChunksIntento.push(e.data);
+        audioChunksIntento.push(e.data);
     };
 
-    mediaRecorderIntento.onstop = async () => {
-      stream.getTracks().forEach(track => track.stop());
-      
-      if (audioChunksIntento.length === 0) {
-        mensajeValidacion.innerText = "⚠️ No te escuché, intenta de nuevo.";
-        return;
-      }
-      
+    mediaRecorderIntento.onstop = () => {
+      // Creamos el archivo de audio con tu voz
       const blob = new Blob(audioChunksIntento, { type: mimeTypeIntento });
       const nombre = isSafari ? "intento.mp4" : "intento.webm";
+      
+      // Lo enviamos para que lo califique
       enviarIntento(blob, nombre);
+
+      // Apagamos el micrófono hasta DESPUÉS de haber armado el archivo
+      stream.getTracks().forEach(track => track.stop());
     };
 
     mediaRecorderIntento.start();
@@ -499,7 +501,7 @@ btnGrabarIntento.addEventListener("click", async () => {
     mensajeValidacion.innerText = "❌ Necesitas dar permiso al micrófono";
   }
 });
-
+  
 function enviarIntento(blob, nombre) {
   const formData = new FormData();
   formData.append("file", blob, nombre);
@@ -629,6 +631,7 @@ function volverAPalabras() {
 </script>
 </body>
 </html>
+
 
 
 
