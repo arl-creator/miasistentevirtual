@@ -8,6 +8,10 @@ import uuid
 from pydub import AudioSegment
 import tempfile
 import json
+import shutil
+
+# Configurar ffmpeg automáticamente si existe en el sistema
+AudioSegment.converter = shutil.which("ffmpeg")
 
 # 1. CARGA DE CONFIGURACIÓN
 load_dotenv()
@@ -309,6 +313,7 @@ def tts():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
