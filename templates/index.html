@@ -235,107 +235,55 @@ let audioChunks = [];
 let audioChunksIntento = [];
 
   
-  
-if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
   respuestaElemento.innerText = "❌ Tu navegador no permite usar el micrófono";
 }
 
-
-  // --- NUEVA LÓGICA DE GRABACIÓN DIRECTA ---
-// --- NUEVO BOTÓN DE GRABAR INTENTO (COMPATIBLE IPHONE) ---
-btnGrabarIntento.addEventListener("click", async () => {
-  if (mediaRecorderIntento && mediaRecorderIntento.state === "recording") {
-    mediaRecorderIntento.stop();
-    btnGrabarIntento.style.background = "var(--secondary)"; 
-    btnGrabarIntento.innerText = "🎤 Graba para repetir";
-    mensajeValidacion.innerText = "⏳ Procesando tu voz..."; 
+// --- 1. LÓGICA DEL MICRÓFONO PRINCIPAL ---
+botonMicrofono.addEventListener("click", async () => {
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+    botonMicrofono.style.background = "var(--primary)";
     return;
   }
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    
-    // 🔥 OBLIGAMOS a Safari (iPhone/Mac) a usar mp4 para que no rompa el archivo
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const mimeTypeIntento = isSafari ? 'audio/mp4' : 'audio/webm';
+    const mimeType = isSafari ? 'audio/mp4' : 'audio/webm';
+    
+    mediaRecorder = new MediaRecorder(stream, { mimeType });
+    audioChunks = [];
 
-    mediaRecorderIntento = new MediaRecorder(stream, { mimeType: mimeTypeIntento });
-    audioChunksIntento = [];
-
-    mediaRecorderIntento.ondataavailable = e => {
-      if (e.data && e.data.size > 0) audioChunksIntento.push(e.data);
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: mimeType });
+      const ext = isSafari ? 'mp4' : 'webm';
+      enviarAudio(blob, `grabacion.${ext}`);
     };
 
-    mediaRecorderIntento.onstop = async () => {
-      stream.getTracks().forEach(track => track.stop()); // Apaga el micrófono
-      
-      if (audioChunksIntento.length === 0) {
-        mensajeValidacion.innerText = "⚠️ No te escuché, intenta de nuevo.";
-        return;
-      }
-      
-      const blob = new Blob(audioChunksIntento, { type: mimeTypeIntento });
-      const nombre = isSafari ? "intento.mp4" : "intento.webm";
-      enviarIntento(blob, nombre);
-    };
-
-    mediaRecorderIntento.start();
-    btnGrabarIntento.style.background = "red"; 
-    btnGrabarIntento.innerText = "⏹️ Toca para detener";
-    mensajeValidacion.innerText = "🎙️ Habla ahora...";
+    mediaRecorder.start();
+    botonMicrofono.style.background = "red";
+    respuestaElemento.innerText = "🎙️ Escuchando... Toca para parar";
   } catch (err) {
-    mensajeValidacion.innerText = "❌ Necesitas dar permiso al micrófono";
+    respuestaElemento.innerText = "❌ Permite el uso del micrófono";
   }
 });
 
-async function iniciarGrabacionIntento() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
-
-        mediaRecorder.ondataavailable = event => {
-            audioChunks.push(event.data);
-        };
-
-        mediaRecorder.onstop = enviarAudio;
-
-        mediaRecorder.start();
-        document.getElementById("estadoGrabacion").innerText = "🎤 Grabando...";
-    } catch (error) {
-        alert("Debes permitir el micrófono.");
-    }
-}
-
-function detenerGrabacionIntento() {
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-        mediaRecorder.stop();
-        document.getElementById("estadoGrabacion").innerText = "⏳ Procesando...";
-    }
-}
-  
 function enviarAudio(audioBlob, nombreArchivo) {
     const formData = new FormData();
     formData.append("file", audioBlob, nombreArchivo);
-
     respuestaElemento.innerText = "⏳ Procesando voz...";
 
-    fetch("/voz", {
-        method: "POST",
-        body: formData
-    })
+    fetch("/voz", { method: "POST", body: formData })
     .then(res => res.json())
     .then(data => {
         if (data.texto && data.texto.trim() !== "") {
             respuestaElemento.innerText = "🧠 Entendí: " + data.texto;
-            
-            // 🔥 AQUÍ SE UNE LA VOZ CON EL EJERCICIO
             if (btnGrabarIntento.style.display === "block") {
-                // Si el botón de repetir está visible, estamos en un ejercicio
                 validarIntento(btnGrabarIntento.dataset.respuesta || btnGrabarIntento.dataset.oracion, data.texto);
             } else {
-                // Si no, es una pregunta normal
                 enviarPregunta(data.texto);
             }
         } else {
@@ -348,7 +296,77 @@ function enviarAudio(audioBlob, nombreArchivo) {
     });
 }
 
-// --- LÓGICA DE EJERCICIOS DE PALABRAS ---
+// --- 2. LÓGICA DE PREGUNTAS NORMALES ---
+function enviarPregunta(pregunta) {
+    fetch("/preguntar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pregunta })
+    })
+    .then(res => res.json())
+    .then(data => {
+        respuestaElemento.innerText = "🧠 " + data.respuesta;
+        mostrarImagenes(data.imagenes || []);
+        
+        const audioRespuesta = document.getElementById("audio-respuesta");
+        const audioRepeticion = document.getElementById("audio-repeticion");
+        btnGrabarIntento.style.display = "none";
+        delete btnGrabarIntento.dataset.oracion;
+
+        if (data.audio_url) {
+            audioRespuesta.src = data.audio_url + "?t=" + new Date().getTime();
+            audioRespuesta.play().catch(err => console.log(err));
+        }
+
+        audioRespuesta.onended = () => {
+            if (data.repetir_url) {
+                audioRepeticion.src = data.repetir_url + "?t=" + new Date().getTime();
+                audioRepeticion.play().catch(err => console.log(err));
+            }
+        };
+
+        audioRepeticion.onended = () => {
+            btnGrabarIntento.style.display = "block";
+            btnGrabarIntento.dataset.respuesta = data.respuesta;
+            contenedorEjercicios.style.display = "flex";
+        };
+    });
+}
+
+function mostrarImagenes(urls) {
+    imagenesContenedor.innerHTML = "";
+    urls.forEach(url => {
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "Imagen";
+        imagenesContenedor.appendChild(img);
+    });
+}
+
+// --- 3. LÓGICA DE EJERCICIOS ---
+btnFrases.addEventListener("click", async () => {
+  respuestaElemento.innerText = "🎲 Generando palabras...";
+  const res = await fetch("/palabras_vocales");
+  const data = await res.json();
+  if (data.palabras && data.palabras.length > 0) {
+    iniciarSecuenciaPalabras(data.palabras);
+  } else {
+    respuestaElemento.innerText = "❌ No se pudieron generar palabras";
+  }
+});
+
+btnOraciones.addEventListener("click", () => {
+  respuestaElemento.innerText = "🔠 Elige una vocal para practicar:";
+  contenedorEjercicios.innerHTML = `
+    <button onclick="iniciarEjercicioVocal('a')">A</button>
+    <button onclick="iniciarEjercicioVocal('e')">E</button>
+    <button onclick="iniciarEjercicioVocal('i')">I</button>
+    <button onclick="iniciarEjercicioVocal('o')">O</button>
+    <button onclick="iniciarEjercicioVocal('u')">U</button>
+    <button onclick="volverAPalabras()" style="background:var(--secondary); color:white;">Volver</button>
+  `;
+});
+
 async function iniciarSecuenciaPalabras(palabras) {
     palabrasPendientes = [...palabras];
     palabrasCompletadas = 0;
@@ -359,8 +377,9 @@ async function iniciarSecuenciaPalabras(palabras) {
 
 async function reproducirSiguientePalabra() {
     if (palabrasPendientes.length === 0) {
-        respuestaElemento.innerText = "🥳 ¡Completaste las 5 palabras! ¡Excelente trabajo!";
-        contenedorEjercicios.style.display = "block";
+        respuestaElemento.innerText = "🥳 ¡Completaste las palabras! ¡Excelente!";
+        volverAPalabras();
+        contenedorEjercicios.style.display = "flex";
         return;
     }
 
@@ -393,69 +412,11 @@ async function reproducirSiguientePalabra() {
         reproducirSiguientePalabra();
     }
 }
-async function generarOracion(vocal) {
-    try {
-        const response = await fetch("/oracion_vocal", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ vocal: vocal })
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-            console.log("Error:", data.error);
-            return;
-        }
-
-        document.getElementById("palabra").innerText = data.palabra_clave;
-        document.getElementById("oracion").innerText = data.oracion;
-
-        if (data.audio_url) {
-            const audio = new Audio(data.audio_url);
-            audio.play();
-        }
-
-    } catch (error) {
-        console.error("Error JS:", error);
-    }
-}
-  
-btnFrases.addEventListener("click", async () => {
-  respuestaElemento.innerText = "🎲 Generando palabras...";
-
-  const res = await fetch("/palabras_vocales");
-  const data = await res.json();
-
-  if (data.palabras && data.palabras.length > 0) {
-    iniciarSecuenciaPalabras(data.palabras);
-  } else {
-    respuestaElemento.innerText = "❌ No se pudieron generar palabras";
-  }
-});
-  
-btnOraciones.addEventListener("click", () => {
-  respuestaElemento.innerText = "🔠 Elige una vocal para practicar:";
-
-  contenedorEjercicios.innerHTML = `
-    <button onclick="iniciarEjercicioVocal('a')">A</button>
-    <button onclick="iniciarEjercicioVocal('e')">E</button>
-    <button onclick="iniciarEjercicioVocal('i')">I</button>
-    <button onclick="iniciarEjercicioVocal('o')">O</button>
-    <button onclick="iniciarEjercicioVocal('u')">U</button>
-  `;
-});
-
-// --- EJERCICIOS DE ORACIONES ---
-// --- FUNCIÓN PARA INICIAR EJERCICIO DE ORACIONES (Con orden de audio corregido) ---
 
 function iniciarEjercicioVocal(vocal) {
-  // Ocultar el botón de ejercicios cuando empezamos un ejercicio
   contenedorEjercicios.style.display = "none"; 
   btnGrabarIntento.style.display = "none";
-  mensajeValidacion.innerText = "";
+  mensajeValidacion.innerText = "Generando oración...";
 
    fetch("/oracion_vocal", {
     method: "POST",
@@ -469,144 +430,75 @@ function iniciarEjercicioVocal(vocal) {
     const oracion = data.oracion;
     const palabraClave = data.palabra_clave;
 
-    respuestaElemento.innerText = `🧠 La palabra es: ${palabraClave}. Escucha la oración y repítela: "${oracion}"`;
+    respuestaElemento.innerText = `🧠 La palabra es: ${palabraClave}. Escucha y repite: "${oracion}"`;
+    const textoAIntroducir = `La palabra clave es ${palabraClave}. Escucha la oración para la letra ${vocal}: ${oracion}. Ahora repítelo tú.`;
 
-  // ✅ 1. CONCATENAMOS EL TEXTO PARA GENERAR UN SOLO AUDIO EN EL ORDEN CORRECTO
-    const textoAIntroducir = 
-        `La palabra clave es ${palabraClave}. Escucha la oración para la letra ${vocal}: ${oracion}. Ahora repitelo tu.`;
-
-    // 2. Reproducir la secuencia de audio con TTS
     fetch("/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ texto: textoAIntroducir }) // Usamos el texto concatenado
+      body: JSON.stringify({ texto: textoAIntroducir }) 
     })
     .then(res => res.json())
     .then(dataTTS => {
       const audio = new Audio(dataTTS.audio_url + "?t=" + new Date().getTime());
+      mensajeValidacion.innerText = "";
       audio.play();
 
       audio.onended = () => {
         btnGrabarIntento.style.display = "block";
-        // Guardamos la oración completa como respuesta esperada
         btnGrabarIntento.dataset.oracion = oracion; 
         btnGrabarIntento.dataset.palabraClave = palabraClave;
         btnGrabarIntento.dataset.vocal = vocal;
-        delete btnGrabarIntento.dataset.respuesta; // Limpiar la respuesta anterior de "palabras"
+        delete btnGrabarIntento.dataset.respuesta; 
       };
     });
   });
  }
 
-// --- PREGUNTAS NORMALES ---
-function enviarPregunta(pregunta) {
-    fetch("/preguntar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pregunta })
-    })
-    .then(res => res.json())
-    .then(data => {
-        respuestaElemento.innerText = "🧠 " + data.respuesta;
-        mostrarImagenes(data.imagenes || []);
-        const audioRespuesta = document.getElementById("audio-respuesta");
-        const audioRepeticion = document.getElementById("audio-repeticion");
-        btnGrabarIntento.style.display = "none";
-        delete btnGrabarIntento.dataset.oracion;
-
-        if (data.audio_url) {
-            audioRespuesta.src = data.audio_url + "?t=" + new Date().getTime();
-            audioRespuesta.play().catch(err => console.log("Error al reproducir audio:", err));
-        }
-
-        audioRespuesta.onended = () => {
-            if (data.repetir_url) {
-                audioRepeticion.src = data.repetir_url + "?t=" + new Date().getTime();
-                audioRepeticion.play().catch(err => console.log("Error audio repetición:", err));
-            }
-        };
-
-        audioRepeticion.onended = () => {
-            btnGrabarIntento.style.display = "block";
-            btnGrabarIntento.dataset.respuesta = data.respuesta;
-            contenedorEjercicios.style.display = "block";
-        };
-    });
-}
-
-function mostrarImagenes(urls) {
-    imagenesContenedor.innerHTML = "";
-    urls.forEach(url => {
-        const img = document.createElement("img");
-        img.src = url;
-        img.alt = "Imagen";
-        imagenesContenedor.appendChild(img);
-    });
-}
-  
-// --- NUEVA LÓGICA DE GRABAR INTENTO (1 toque para iniciar, 1 toque para parar) ---
-// --- NUEVA LÓGICA DE GRABAR INTENTO (Súper compatible con iPhone) ---
+// --- 4. NUEVO BOTÓN DE GRABAR INTENTO (COMPATIBLE IPHONE) ---
 btnGrabarIntento.addEventListener("click", async () => {
-  // 1. SI YA ESTÁ GRABANDO -> DETENER
   if (mediaRecorderIntento && mediaRecorderIntento.state === "recording") {
     mediaRecorderIntento.stop();
     btnGrabarIntento.style.background = "var(--secondary)"; 
     btnGrabarIntento.innerText = "🎤 Graba para repetir";
-    mensajeValidacion.innerText = "⏳ Procesando tu voz..."; // Cambio visual instantáneo
+    mensajeValidacion.innerText = "⏳ Procesando tu voz..."; 
     return;
   }
 
-  // 2. SI NO ESTÁ GRABANDO -> INICIAR
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     
-    // Dejamos que el navegador decida su mejor formato automáticamente
-    let opciones = {};
-    if (MediaRecorder.isTypeSupported('audio/webm')) {
-        opciones = { mimeType: 'audio/webm' };
-    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-        opciones = { mimeType: 'audio/mp4' };
-    }
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const mimeTypeIntento = isSafari ? 'audio/mp4' : 'audio/webm';
 
-    mediaRecorderIntento = new MediaRecorder(stream, opciones);
+    mediaRecorderIntento = new MediaRecorder(stream, { mimeType: mimeTypeIntento });
     audioChunksIntento = [];
 
-    // Juntar los pedacitos de audio
     mediaRecorderIntento.ondataavailable = e => {
-      if (e.data && e.data.size > 0) {
-        audioChunksIntento.push(e.data);
-      }
+      if (e.data && e.data.size > 0) audioChunksIntento.push(e.data);
     };
 
-    // Cuando detenemos la grabación
     mediaRecorderIntento.onstop = async () => {
-      // Apagar el micrófono (quita el puntito naranja de la pantalla)
       stream.getTracks().forEach(track => track.stop());
-
+      
       if (audioChunksIntento.length === 0) {
         mensajeValidacion.innerText = "⚠️ No te escuché, intenta de nuevo.";
         return;
       }
       
-      const tipo = opciones.mimeType || 'audio/mp4';
-      const blob = new Blob(audioChunksIntento, { type: tipo });
-      const nombre = tipo.includes('webm') ? "intento.webm" : "intento.mp4";
-      
-      // Enviar al servidor
+      const blob = new Blob(audioChunksIntento, { type: mimeTypeIntento });
+      const nombre = isSafari ? "intento.mp4" : "intento.webm";
       enviarIntento(blob, nombre);
     };
 
-    // Iniciar
     mediaRecorderIntento.start();
     btnGrabarIntento.style.background = "red"; 
     btnGrabarIntento.innerText = "⏹️ Toca para detener";
     mensajeValidacion.innerText = "🎙️ Habla ahora...";
-    
   } catch (err) {
     mensajeValidacion.innerText = "❌ Necesitas dar permiso al micrófono";
   }
 });
-  
 
 function enviarIntento(blob, nombre) {
   const formData = new FormData();
@@ -616,15 +508,8 @@ function enviarIntento(blob, nombre) {
     .then(res => res.json())
     .then(data => {
       if (data.texto && data.texto.trim() !== "") {
-        const respuestaCorrecta =
-          btnGrabarIntento.dataset.respuesta ||
-          btnGrabarIntento.dataset.oracion;
-        
-          validarIntento(
-            respuestaCorrecta,
-            data.texto
-        );
-
+        const respuestaCorrecta = btnGrabarIntento.dataset.respuesta || btnGrabarIntento.dataset.oracion;
+        validarIntento(respuestaCorrecta, data.texto);
       } else {
         mensajeValidacion.innerText = "👂 No te escuché bien, intenta otra vez";
         btnGrabarIntento.style.display = "block";
@@ -636,10 +521,8 @@ function enviarIntento(blob, nombre) {
     });
 }
 
-// --- VALIDACIÓN DEL INTENTO (CORREGIDA) ---
-// --- VALIDACIÓN DEL INTENTO (CORREGIDA Y OPTIMIZADA) ---
+// --- 5. VALIDACIÓN ---
 function validarIntento(respuestaCorrecta, intentoNiño) {
-
     if (!intentoNiño || intentoNiño.trim() === "") {
         mensajeValidacion.innerText = "🎤 No te escuché bien, ¡inténtalo de nuevo!";
         btnGrabarIntento.style.display = "block";
@@ -653,7 +536,6 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
     })
     .then(res => res.json())
     .then(data => {
-
         const mensajeFinal = data.mensaje + ` (Tú dijiste: "${intentoNiño}")`;
         mensajeValidacion.innerText = mensajeFinal;
         btnGrabarIntento.style.display = "none";
@@ -669,85 +551,38 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
         })
         .then(res => res.json())
         .then(dataTTS => {
-
             if (!dataTTS.audio_url) {
                 btnGrabarIntento.style.display = "block";
                 return;
             }
 
             const audioMensaje = new Audio(dataTTS.audio_url + "?t=" + new Date().getTime());
-
             audioMensaje.onended = async () => {
-
-                // --- CASO A: PALABRAS ---
                 if (!btnGrabarIntento.dataset.oracion) {
-
                     if (esCorrecto) {
-
                         if (palabrasPendientes.length > 0) {
                             palabrasPendientes.shift();
                             palabrasCompletadas++;
                         }
-
                         reproducirSiguientePalabra();
-
                     } else {
                         btnGrabarIntento.style.display = "block";
                         mensajeValidacion.innerText = "¡Casi! Inténtalo una vez más.";
                     }
-
-                } 
-                  // --- CASO B: ORACIONES ---
-                  else {
-                  
-                      if (esCorrecto) {
-                  
-                          respuestaElemento.innerText = "✨ ¡Increíble! Has terminado la oración.";
-                          mensajeValidacion.innerText = "";
-                  
-                          delete btnGrabarIntento.dataset.oracion;
-                  
-                          setTimeout(() => {
-                  
-                              // 🔥 MOSTRAR DE NUEVO LOS BOTONES
-                              contenedorEjercicios.style.display = "block";
-                  
-                              // 🔥 RESTAURAR BOTONES ORIGINALES
-                              contenedorEjercicios.innerHTML = `
-                                  <button id="btn-frases">🗣️ Practicar Palabras (A, E, I, O, U)</button>
-                                  <button id="btn-oraciones">🔠 Practicar Oraciones</button>
-                              `;
-                  
-                              // 🔥 VOLVER A ASIGNAR EVENTOS (MUY IMPORTANTE)
-                              document.getElementById("btn-frases").addEventListener("click", async () => {
-                                  respuestaElemento.innerText = "🎲 Generando palabras...";
-                                  const res = await fetch("/palabras_vocales");
-                                  const data = await res.json();
-                                  if (data.palabras && data.palabras.length > 0) {
-                                      iniciarSecuenciaPalabras(data.palabras);
-                                  }
-                              });
-                  
-                              document.getElementById("btn-oraciones").addEventListener("click", () => {
-                                  respuestaElemento.innerText = "🔠 Elige una vocal para practicar:";
-                                  contenedorEjercicios.innerHTML = `
-                                      <button onclick="iniciarEjercicioVocal('a')">A</button>
-                                      <button onclick="iniciarEjercicioVocal('e')">E</button>
-                                      <button onclick="iniciarEjercicioVocal('i')">I</button>
-                                      <button onclick="iniciarEjercicioVocal('o')">O</button>
-                                      <button onclick="iniciarEjercicioVocal('u')">U</button>
-                                  `;
-                              });
-                  
-                          }, 2000);
-                  
-                      } else {
-                          btnGrabarIntento.style.display = "block";
-                      }
-                  }
-
+                } else {
+                    if (esCorrecto) {
+                        respuestaElemento.innerText = "✨ ¡Increíble! Has terminado la oración.";
+                        mensajeValidacion.innerText = "";
+                        delete btnGrabarIntento.dataset.oracion;
+                        setTimeout(() => {
+                            volverAPalabras();
+                            contenedorEjercicios.style.display = "flex";
+                        }, 2000);
+                    } else {
+                        btnGrabarIntento.style.display = "block";
+                    }
+                }
             };
-
             audioMensaje.play().catch(() => {
                 btnGrabarIntento.style.display = "block";
             });
@@ -759,26 +594,17 @@ function validarIntento(respuestaCorrecta, intentoNiño) {
         btnGrabarIntento.style.display = "block";
     });
 }
-// Función para detener grabación
-function detenerGrabacionIntento() {
-    if (mediaRecorderIntento && mediaRecorderIntento.state === "recording") {
-        mediaRecorderIntento.stop();
-    }
-} // 🔥 ¡ESTA ES LA LLAVE QUE FALTABA! 🔥
 
-// --- FUNCIÓN PARA VOLVER AL MENÚ DE EJERCICIOS ---
 function volverAPalabras() {
     respuestaElemento.innerText = "🎙️ ¡Presiona el micrófono para hablar!";
     mensajeValidacion.innerText = "";
     btnGrabarIntento.style.display = "none";
     
-    // Restaurar el menú original
     contenedorEjercicios.innerHTML = `
         <button id="btn-frases">🗣️ Practicar Palabras (A, E, I, O, U)</button>
         <button id="btn-oraciones">🔠 Practicar Oraciones</button>
     `;
 
-    // Volver a asignar los eventos a los botones nuevos
     document.getElementById("btn-frases").addEventListener("click", async () => {
         respuestaElemento.innerText = "🎲 Generando palabras...";
         const res = await fetch("/palabras_vocales");
@@ -796,12 +622,14 @@ function volverAPalabras() {
             <button onclick="iniciarEjercicioVocal('i')">I</button>
             <button onclick="iniciarEjercicioVocal('o')">O</button>
             <button onclick="iniciarEjercicioVocal('u')">U</button>
+            <button onclick="volverAPalabras()" style="background:var(--secondary); color:white;">Volver</button>
         `;
     });
 }
 </script>
 </body>
 </html>
+
 
 
 
