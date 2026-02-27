@@ -58,7 +58,6 @@ def generar_audios_pregrabados():
             os.makedirs(os.path.dirname(ruta_audio), exist_ok=True) 
             tts.save(ruta_audio)
 
-
 def obtener_respuesta_deepseek(pregunta, system_prompt="Eres un asistente amigable.", temperature=0.7):
     try:
         response = openai.ChatCompletion.create(
@@ -69,6 +68,35 @@ def obtener_respuesta_deepseek(pregunta, system_prompt="Eres un asistente amigab
         return response['choices'][0]['message']['content'].strip()
     except Exception as e:
         return "Lo siento, tuve un problema. ¿Me repites?"
+
+def generar_palabra_aleatoria(vocal):
+    try:
+        prompt = f"Dame una palabra infantil sencilla que empiece con la letra {vocal}. Responde SOLO la palabra."
+
+        response = openai.ChatCompletion.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": "Responde solo una palabra infantil."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.8,
+            max_tokens=20
+        )
+
+        palabra = response['choices'][0]['message']['content'].strip()
+        palabra = palabra.replace('"', '').replace('.', '').split()[0]
+        return palabra.capitalize()
+
+    except Exception as e:
+        print("⚠️ Error con API en palabra aleatoria, usando respaldo:", e)
+        PALABRAS_RESPALDO = {
+            "a": ["Abeja", "Avión", "Árbol", "Araña"],
+            "e": ["Elefante", "Escuela", "Estrella", "Espejo"],
+            "i": ["Iguana", "Isla", "Iglesia", "Imán"],
+            "o": ["Oso", "Oveja", "Ola", "Ojo"],
+            "u": ["Uva", "Unicornio", "Uniforme", "Uno"]
+        }
+        return random.choice(PALABRAS_RESPALDO.get(vocal.lower(), ["Abeja"]))
 
 # 4. RUTAS (ENDPOINTS)
 @app.route("/") 
@@ -99,17 +127,14 @@ def preguntar():
 
     return jsonify({"respuesta": res_texto, "audio_url": f"/static/audio/{res_name}", "repetir_url": f"/static/audio/{rep_name}", "imagenes": []})
 
-
 @app.route("/voz", methods=["POST"])
 def voz():
-    import tempfile
-    import os
     from pydub import AudioSegment
-    import speech_recognition as sr
     import imageio_ffmpeg
 
     recognizer = sr.Recognizer()
-
+    
+    # Declaramos las variables al inicio para que el "finally" no falle
     input_path = None
     wav_path = None
 
@@ -132,30 +157,32 @@ def voz():
         wav_path = input_path + ".wav"
         audio.export(wav_path, format="wav")
 
-        # Leer WAV
+        # Leer WAV con SpeechRecognition
         with sr.AudioFile(wav_path) as source:
             audio_data = recognizer.record(source)
 
         texto = recognizer.recognize_google(audio_data, language="es-ES")
-
         print("Texto reconocido:", texto)
 
         return jsonify({"texto": texto})
 
+    except sr.UnknownValueError:
+        # Esto pasa cuando hay ruido pero no se entiende lo que dicen
+        return jsonify({"texto": ""})
+
     except Exception as e:
         print("Error en voz:", repr(e))
         return jsonify({"texto": ""})
-
+        
     finally:
-        # Limpieza segura
+        # 🔥 Limpieza segura sin errores de indentación
         try:
             if input_path and os.path.exists(input_path):
                 os.remove(input_path)
             if wav_path and os.path.exists(wav_path):
                 os.remove(wav_path)
-        except:
+        except Exception as e:
             pass
-        
 
 @app.route("/validar", methods=["POST"])
 def validar():
@@ -205,7 +232,6 @@ def validar():
             else:
                 mensaje = "Intenta decir A, E, I, O, U."
                 correcto = False
-
         else:
             # 🔸 Validación normal por similitud
             similitud = SequenceMatcher(None, intento, correcta).ratio()
@@ -227,8 +253,6 @@ def validar():
         "correcto": correcto
     })
     
-# nuevoooooooo
-
 @app.route("/oracion_vocal", methods=["POST"])
 def oracion_vocal():
     data = request.json
@@ -262,18 +286,17 @@ def oracion_vocal():
 
         contenido = response['choices'][0]['message']['content'].strip()
 
-        # 🔥 Limpieza por si DeepSeek responde con ```json
+        # Limpieza JSON
         if "```" in contenido:
             contenido = contenido.split("```")[1]
             contenido = contenido.replace("json", "").strip()
 
         resultado = json.loads(contenido)
-
         palabra = resultado["palabra_clave"].strip()
         oracion = resultado["oracion"].strip()
 
     except Exception as e:
-        print("⚠️ Error con API, usando respaldo:", e)
+        print("⚠️ Error con API en oración, usando respaldo:", e)
 
         PALABRAS_RESPALDO = {
             "a": ["Abeja", "Avión", "Árbol", "Araña"],
@@ -307,57 +330,6 @@ def oracion_vocal():
         "audio_url": f"/static/audio/{nombre_audio}"
     })
         
-def generar_palabra_aleatoria(vocal):
-    if not USE_API:
-        PALABRAS_RESPALDO = {
-            "a": ["Abeja", "Avión", "Árbol", "Araña"],
-            "e": ["Elefante", "Escuela", "Estrella", "Espejo"],
-            "i": ["Iguana", "Isla", "Iglesia", "Imán"],
-            "o": ["Oso", "Oveja", "Ola", "Ojo"],
-            "u": ["Uva", "Unicornio", "Uniforme", "Uno"]
-        }
-        return random.choice(PALABRAS_RESPALDO.get(vocal.lower(), ["Abeja"]))
-    try:
-        prompt = f"Dame una palabra infantil sencilla que empiece con la letra {vocal}. Responde SOLO la palabra."
-
-        response = openai.ChatCompletion.create(
-            model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": "Responde solo una palabra infantil."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.8,
-            max_tokens=20
-        )
-
-        palabra = response['choices'][0]['message']['content'].strip()
-        palabra = palabra.replace('"', '').replace('.', '').split()[0]
-        return palabra.capitalize()
-
-    except Exception as e:
-        print("⚠️ Error con API, usando respaldo:", e)
-
-        PALABRAS_RESPALDO = {
-            "a": ["Abeja", "Avión", "Árbol", "Araña"],
-            "e": ["Elefante", "Escuela", "Estrella", "Espejo"],
-            "i": ["Iguana", "Isla", "Iglesia", "Imán"],
-            "o": ["Oso", "Oveja", "Ola", "Ojo"],
-            "u": ["Uva", "Unicornio", "Uniforme", "Uno"]
-        }
-
-        return random.choice(PALABRAS_RESPALDO.get(vocal.lower(), ["Abeja"]))
-        
-#@app.route(/palabras_vocales/<vocal>", methods=["GET"])
-#def palabras_vocales():
- #   vocales = ["a", "e", "i", "o", "u"]
-  #  palabras = []
-#
- #   for vocal in vocales:
-  #      palabra = generar_palabra_aleatoria(vocal)  # tu función IA
-   #     palabras.append(palabra)
-
-    #return jsonify({"palabras": palabras})
-    
 @app.route("/palabras_vocales", methods=["GET"])
 def palabras_vocales():
     vocales = ["a", "e", "i", "o", "u"]
@@ -369,7 +341,6 @@ def palabras_vocales():
 
     return jsonify({"palabras": palabras})
 
-        
 @app.route("/tts", methods=["POST"])
 def tts():
     data = request.json
@@ -390,11 +361,11 @@ def tts():
         print("Error TTS:", e)
         return jsonify({"error": "Error generando audio"}), 500
 
-
 # 5. INICIO DE LA APP
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
 
