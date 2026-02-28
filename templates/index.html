@@ -487,12 +487,14 @@ function iniciarEjercicioVocal(vocal) {
     const palabraClave = data.palabra_clave;
 
     // Actualizamos el texto visual
-    respuestaElemento.innerText = `🧠 La palabra es: ${palabraClave}. Escucha la frase: "${oracion}"`;
+    //respuestaElemento.innerText = `🧠 La palabra es: ${palabraClave}. Escucha la frase: "${oracion}"`;
+    respuestaElemento.innerText = `🧠 Escucha la frase: "${oracion}"`;
     
     // 🔊 NUEVA ESTRUCTURA DE VOZ:
     // "La palabra es UVA. Escucha la frase: La uva es dulce. Ahora dilo tú."
-    const textoAIntroducir = `La palabra es ${palabraClave}. Escucha la frase: ${oracion}. Ahora dilo tú.`;
-
+    //const textoAIntroducir = `La palabra es ${palabraClave}. Escucha la frase: ${oracion}. Ahora dilo tú.`;
+    const textoAIntroducir = `Escucha la frase: ${oracion}. Ahora dilo tú.`;
+    
     fetch("/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -704,6 +706,7 @@ function volverAPalabras() {
 </script>
 </body>
 </html>
+
 
 
 
